@@ -1,0 +1,23 @@
+{
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uv sync*)",
+      "Bash(uv run pytest*)",
+      "Bash(uv run ruff*)",
+      "Bash(uv run mypy*)",
+      "Bash(uv run alembic*)",
+      "Bash(uv run python -m benchmarks.run*)",
+      "Bash(docker compose -f docker-compose.dev.yml*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}

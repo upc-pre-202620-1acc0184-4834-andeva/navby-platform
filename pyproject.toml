@@ -1,0 +1,79 @@
+[project]
+name = "navby-platform"
+version = "0.1.0"
+description = "Backend de Navby: recomienda los 3 mejores vuelos entre dos ciudades con un único puntaje multicriterio."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.1",
+    "asyncpg>=0.32.0",
+    "bcrypt>=5.0.0",
+    "email-validator>=2.3.0",
+    "fastapi>=0.161.1",
+    "google-auth[requests]>=2.62.0",
+    "httpx>=0.28.1",
+    "mercadopago>=3.6.0",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "pyjwt>=2.15.1",
+    "redis>=8.1.0",
+    "resend>=2.50.0",
+    "sqlalchemy[asyncio]>=2.1.6",
+    "tzdata>=2026.5",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["migrations/versions", "docs"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # bugbear
+    "SIM",   # simplify
+    "ASYNC", # async
+    "T20",   # sin print de depuración (definición de terminado)
+    "RUF",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20"]
+"benchmarks/**" = ["T20"]
+"scripts/**" = ["T20"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "."
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["mercadopago.*", "resend.*", "google.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.2",
+]

@@ -1,0 +1,33 @@
+# PostgreSQL y Redis para desarrollo local. Credenciales iguales a .env.example.
+# Uso: docker compose -f docker-compose.dev.yml up -d
+# Si Windows reserva el puerto 5432 (Hyper-V/WSL), define POSTGRES_PORT en .env
+# (p. ej. 55432) y usa el mismo puerto en DATABASE_URL.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: navby
+      POSTGRES_PASSWORD: navby
+      POSTGRES_DB: navby
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - navby-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U navby -d navby"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  navby-postgres:

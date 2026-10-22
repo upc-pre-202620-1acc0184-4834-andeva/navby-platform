@@ -1,0 +1,120 @@
+city,country,alias_es
+Tokyo,Japan,Tokio
+London,United Kingdom,Londres
+New York,United States,Nueva York
+Beijing,China,Pekín
+Shanghai,China,Shanghái
+Moscow,Russia,Moscú
+St. Petersburg,Russia,San Petersburgo
+Rome,Italy,Roma
+Milan,Italy,Milán
+Venice,Italy,Venecia
+Florence,Italy,Florencia
+Naples,Italy,Nápoles
+Torino,Italy,Turín
+Genoa,Italy,Génova
+Paris,France,París
+Marseille,France,Marsella
+Lyon,France,Lyon
+Nice,France,Niza
+Toulouse,France,Tolosa
+Bordeaux,France,Burdeos
+Strasbourg,France,Estrasburgo
+Munich,Germany,Múnich
+Cologne,Germany,Colonia
+Berlin,Germany,Berlín
+Hamburg,Germany,Hamburgo
+Frankfurt,Germany,Fráncfort
+Duesseldorf,Germany,Düsseldorf
+Nuernberg,Germany,Núremberg
+Vienna,Austria,Viena
+Zurich,Switzerland,Zúrich
+Geneva,Switzerland,Ginebra
+Mulhouse,France,Basilea
+Brussels,Belgium,Bruselas
+Antwerp,Belgium,Amberes
+Amsterdam,Netherlands,Ámsterdam
+Copenhagen,Denmark,Copenhague
+Stockholm,Sweden,Estocolmo
+Gothenborg,Sweden,Gotemburgo
+Oslo,Norway,Oslo
+Helsinki,Finland,Helsinki
+Warsaw,Poland,Varsovia
+Krakow,Poland,Cracovia
+Prague,Czech Republic,Praga
+Budapest,Hungary,Budapest
+Bucharest,Romania,Bucarest
+Athens,Greece,Atenas
+Thessaloniki,Greece,Tesalónica
+Istanbul,Turkey,Estambul
+Ankara,Turkey,Ankara
+Lisbon,Portugal,Lisboa
+Porto,Portugal,Oporto
+Dublin,Ireland,Dublín
+Edinburgh,United Kingdom,Edimburgo
+Cardiff,United Kingdom,Cardiff
+Reykjavik,Iceland,Reikiavik
+Kiev,Ukraine,Kiev
+Belgrade,Serbia,Belgrado
+Zagreb,Croatia,Zagreb
+Sofia,Bulgaria,Sofía
+Cairo,Egypt,El Cairo
+Alexandria,Egypt,Alejandría
+Marrakech,Morocco,Marrakech
+Casablanca,Morocco,Casablanca
+Tunis,Tunisia,Túnez
+Algier,Algeria,Argel
+Cape Town,South Africa,Ciudad del Cabo
+Johannesburg,South Africa,Johannesburgo
+Nairobi,Kenya,Nairobi
+Addis Ababa,Ethiopia,Adís Abeba
+Dubai,United Arab Emirates,Dubái
+Abu Dhabi,United Arab Emirates,Abu Dabi
+Doha,Qatar,Doha
+Tel-aviv,Israel,Tel Aviv
+Riyadh,Saudi Arabia,Riad
+Tehran,Iran,Teherán
+Delhi,India,Nueva Delhi
+Mumbai,India,Bombay
+Bangkok,Thailand,Bangkok
+Singapore,Singapore,Singapur
+Seoul,South Korea,Seúl
+Hong Kong,Hong Kong,Hong Kong
+Taipei,Taiwan,Taipéi
+Manila,Philippines,Manila
+Kuala Lumpur,Malaysia,Kuala Lumpur
+Hanoi,Vietnam,Hanói
+Osaka,Japan,Osaka
+Sydney,Australia,Sídney
+Melbourne,Australia,Melbourne
+Auckland,New Zealand,Auckland
+Wellington,New Zealand,Wellington
+Philadelphia,United States,Filadelfia
+New Orleans,United States,Nueva Orleans
+Washington,United States,Washington
+Montreal,Canada,Montreal
+Quebec,Canada,Quebec
+Havana,Cuba,La Habana
+Mexico City,Mexico,Ciudad de México
+Panama City,Panama,Ciudad de Panamá
+Guatemala City,Guatemala,Ciudad de Guatemala
+Sao Paulo,Brazil,São Paulo
+Rio De Janeiro,Brazil,Río de Janeiro
+Brasilia,Brazil,Brasilia
+Belem,Brazil,Belém
+Florianopolis,Brazil,Florianópolis
+Asuncion,Paraguay,Asunción
+Bogota,Colombia,Bogotá
+Medellin,Colombia,Medellín
+Cuzco,Peru,Cusco
+Iquitos,Peru,Iquitos
+Arequipa,Peru,Arequipa
+Lima,Peru,Lima
+Santiago,Chile,Santiago de Chile
+Buenos Aires,Argentina,Buenos Aires
+Cordoba,Argentina,Córdoba
+Montevideo,Uruguay,Montevideo
+Caracas,Venezuela,Caracas
+Quito,Ecuador,Quito
+La Paz,Bolivia,La Paz
+Santa Cruz,Bolivia,Santa Cruz de la Sierra
