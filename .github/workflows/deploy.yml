@@ -59,6 +59,7 @@ jobs:
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_USER: ${{ secrets.VM_USER }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          SMOKE_BASE_URL: https://${{ secrets.VM_HOST }}/api/v1
           SMOKE_USER_EMAIL: ${{ secrets.SMOKE_USER_EMAIL }}
           SMOKE_USER_PASSWORD: ${{ secrets.SMOKE_USER_PASSWORD }}
           RUN_PAID_QUOTES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_paid_quotes == 'true' }}
@@ -66,9 +67,9 @@ jobs:
           mkdir -p ~/.ssh
           echo "$VM_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          PREV_SHA=$(ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git rev-parse HEAD")
-          ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git fetch origin main && git checkout main && git pull --ff-only && docker compose up -d --build && docker compose exec -T platform uv run alembic upgrade head"
+          PREV_SHA=$(ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git rev-parse HEAD")
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git update-index --no-assume-unchanged Caddyfile 2>/dev/null || true && git checkout -- Caddyfile 2>/dev/null || true && git fetch origin main && git checkout main && git pull --ff-only && docker compose up -d --build && docker compose exec -T platform uv run alembic upgrade head"
           if ! uv run python scripts/smoke_test.py; then
-            ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git checkout $PREV_SHA && docker compose up -d --build"
+            ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git checkout $PREV_SHA && docker compose up -d --build"
             exit 1
           fi
