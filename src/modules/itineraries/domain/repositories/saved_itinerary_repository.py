@@ -1,0 +1,26 @@
+from typing import Protocol
+from uuid import UUID
+
+from src.modules.itineraries.domain.model.aggregates.saved_itinerary import (
+    SavedItinerary,
+)
+
+
+class SavedItineraryRepository(Protocol):
+    async def lock_user(self, user_id: UUID) -> None: ...
+
+    async def add(self, itinerary: SavedItinerary) -> None: ...
+
+    async def get(self, itinerary_id: UUID) -> SavedItinerary | None: ...
+
+    async def find_by_offer(self, user_id: UUID, offer_id: str) -> SavedItinerary | None: ...
+
+    async def count_for_user(self, user_id: UUID) -> int: ...
+
+    async def list_for_user(
+        self, user_id: UUID, page: int, page_size: int
+    ) -> tuple[list[SavedItinerary], int]: ...
+
+    async def delete(self, itinerary_id: UUID) -> None: ...
+
+    async def delete_all_for_user(self, user_id: UUID) -> None: ...
