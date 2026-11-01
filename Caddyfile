@@ -1,0 +1,3 @@
+{$API_DOMAIN:navby-api.eastus2.cloudapp.azure.com} {
+    reverse_proxy platform:8000
+}
