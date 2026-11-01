@@ -54,7 +54,6 @@ jobs:
       - run: uv run mypy src
 
       - name: Deploy over SSH and run smoke tests
-        if: ${{ secrets.VM_SSH_KEY != '' }}
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_USER: ${{ secrets.VM_USER }}
@@ -64,6 +63,10 @@ jobs:
           SMOKE_USER_PASSWORD: ${{ secrets.SMOKE_USER_PASSWORD }}
           RUN_PAID_QUOTES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_paid_quotes == 'true' }}
         run: |
+          if [ -z "$VM_SSH_KEY" ]; then
+            echo "VM_SSH_KEY secret is not configured; skipping SSH deploy."
+            exit 0
+          fi
           mkdir -p ~/.ssh
           echo "$VM_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
