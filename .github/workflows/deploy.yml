@@ -1,0 +1,74 @@
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      run_paid_quotes:
+        description: "Run live FlightAPI quote search in smoke test"
+        required: false
+        default: "false"
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: navby
+          POSTGRES_PASSWORD: navby
+          POSTGRES_DB: navby
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql+asyncpg://navby:navby@localhost:5432/navby
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-test-secret-minimum-32-bytes-long-value
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run alembic upgrade head
+      - run: uv run pytest
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run mypy src
+
+      - name: Deploy over SSH and run smoke tests
+        if: ${{ secrets.VM_SSH_KEY != '' }}
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          SMOKE_USER_EMAIL: ${{ secrets.SMOKE_USER_EMAIL }}
+          SMOKE_USER_PASSWORD: ${{ secrets.SMOKE_USER_PASSWORD }}
+          RUN_PAID_QUOTES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_paid_quotes == 'true' }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$VM_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          PREV_SHA=$(ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git rev-parse HEAD")
+          ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git fetch origin main && git checkout main && git pull --ff-only && docker compose up -d --build && docker compose exec -T platform uv run alembic upgrade head"
+          if ! uv run python scripts/smoke_test.py; then
+            ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_HOST" "cd /opt/navby && git checkout $PREV_SHA && docker compose up -d --build"
+            exit 1
+          fi
