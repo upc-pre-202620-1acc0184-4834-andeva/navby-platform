@@ -1,0 +1,118 @@
+{
+  "itineraries": [
+    {
+      "id": "itn_ow_1",
+      "leg_ids": ["leg_out_1"],
+      "pricing_options": [
+        {
+          "price": { "amount": 240.00 },
+          "items": [ { "agent_id": "agent_latam", "deep_link": "https://book.navby.example/ow1" } ]
+        }
+      ]
+    },
+    {
+      "id": "itn_ow_2",
+      "leg_ids": ["leg_out_2"],
+      "pricing_options": [
+        {
+          "price": { "amount": 210.00 },
+          "items": [ { "agent_id": "agent_cm", "deep_link": "https://book.navby.example/ow2" } ]
+        }
+      ]
+    },
+    {
+      "id": "itn_ow_3",
+      "leg_ids": ["leg_out_3"],
+      "pricing_options": [
+        {
+          "price": { "amount": 275.00 },
+          "items": [ { "agent_id": "agent_aa", "deep_link": "https://book.navby.example/ow3" } ]
+        }
+      ]
+    }
+  ],
+  "legs": [
+    {
+      "id": "leg_out_1",
+      "departure": "2026-11-01T08:30:00",
+      "arrival": "2026-11-01T14:45:00",
+      "duration_in_minutes": 375,
+      "stop_count": 0,
+      "segment_ids": ["seg_out_1"]
+    },
+    {
+      "id": "leg_out_2",
+      "departure": "2026-11-01T06:00:00",
+      "arrival": "2026-11-01T14:30:00",
+      "duration_in_minutes": 510,
+      "stop_count": 1,
+      "segment_ids": ["seg_out_2a", "seg_out_2b"]
+    },
+    {
+      "id": "leg_out_3",
+      "departure": "2026-11-01T10:15:00",
+      "arrival": "2026-11-01T16:15:00",
+      "duration_in_minutes": 360,
+      "stop_count": 0,
+      "segment_ids": ["seg_out_3"]
+    }
+  ],
+  "segments": [
+    {
+      "id": "seg_out_1",
+      "departure": "2026-11-01T08:30:00",
+      "arrival": "2026-11-01T14:45:00",
+      "origin_station_code": "{ORIGIN}",
+      "destination_station_code": "{DESTINATION}",
+      "marketing_flight_number": "LA2510",
+      "marketing_carrier_id": "carrier_la"
+    },
+    {
+      "id": "seg_out_2a",
+      "departure": "2026-11-01T06:00:00",
+      "arrival": "2026-11-01T09:40:00",
+      "origin_station_code": "{ORIGIN}",
+      "destination_station_code": "PTY",
+      "marketing_flight_number": "CM490",
+      "marketing_carrier_id": "carrier_cm"
+    },
+    {
+      "id": "seg_out_2b",
+      "departure": "2026-11-01T11:00:00",
+      "arrival": "2026-11-01T14:30:00",
+      "origin_station_code": "PTY",
+      "destination_station_code": "{DESTINATION}",
+      "marketing_flight_number": "CM492",
+      "marketing_carrier_id": "carrier_cm"
+    },
+    {
+      "id": "seg_out_3",
+      "departure": "2026-11-01T10:15:00",
+      "arrival": "2026-11-01T16:15:00",
+      "origin_station_code": "{ORIGIN}",
+      "destination_station_code": "{DESTINATION}",
+      "marketing_flight_number": "AA988",
+      "marketing_carrier_id": "carrier_aa"
+    }
+  ],
+  "carriers": [
+    {
+      "id": "carrier_la",
+      "name": "LATAM Airlines",
+      "iata": "LA",
+      "logo": "https://logos.skyscnr.com/images/airlines/favicon/LA.png"
+    },
+    {
+      "id": "carrier_cm",
+      "name": "Copa Airlines",
+      "iata": "CM",
+      "logo": "https://logos.skyscnr.com/images/airlines/favicon/CM.png"
+    },
+    {
+      "id": "carrier_aa",
+      "name": "American Airlines",
+      "iata": "AA",
+      "logo": "https://logos.skyscnr.com/images/airlines/favicon/AA.png"
+    }
+  ]
+}
