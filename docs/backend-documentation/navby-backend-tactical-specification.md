@@ -99,6 +99,8 @@ El router convierte un `Result` fallido en una respuesta RFC 7807 usando el cat�
 | `ORDER_NOT_FOUND` | 404 | Billing | Orden inexistente o de otro usuario. |
 | `INVALID_WEBHOOK_SIGNATURE` | 401 | Billing | Firma `x-signature` de Mercado Pago inválida o con más de 300 s de antigüedad. |
 
+> **Nota sobre códigos internos de dominio y auditoría:** `PAYMENT_MISMATCH` (cuando el monto o la moneda del pago en Mercado Pago no coinciden con la orden) es un **DomainError** interno que registra un log de nivel `CRITICAL` y mantiene la orden en `PENDING` sin acreditar créditos, pero el webhook responde `200` (no expone un error HTTP RFC 7807).
+
 ## 4. Transacciones, eventos y outbox
 
 ```text
@@ -124,7 +126,7 @@ Eventos de integración vigentes:
 ## 5. Autenticación en los routers
 
 - `get_current_user()` (dependencia de FastAPI del Shared Kernel) valida el JWT y devuelve `CurrentUser(user_id, email, email_verified)`.
-- `get_verified_user()` además exige correo verificado. La usan los tres endpoints de `/quotes`.
+- `get_verified_user()` además exige correo verificado. La usan los tres endpoints de `/quotes` y `POST /billing/orders`.
 - Los handlers reciben `user_id` explícito y nunca leen el token.
 
 ## 6. Rate limiting

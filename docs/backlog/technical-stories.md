@@ -14,9 +14,9 @@
 
 | Sprint | Historias | Resultado |
 | :---: | :--- | :--- |
-| 1 | TS-33, TS-38, TS-23, TS-24, TS-25, TS-26, TS-12, TS-13, TS-37 | Plataforma base, grafo, BFS, A\*, ciudades, vista previa y benchmark. |
-| 2 | TS-01 a TS-11, TS-34 | Cuentas, sesiones y eventos. |
-| 3 | TS-27, TS-28, TS-14, TS-15, TS-16, TS-17 | Cotización, podio, perfiles y débito de créditos. |
+| 1 | TS-33, TS-38, TS-24, TS-23, TS-25, TS-26, TS-12, TS-13 | Plataforma base, grafo, BFS, A\*, ciudades y vista previa. |
+| 2 | TS-01 a TS-10, TS-34, TS-11 | Cuentas, sesiones y eventos. |
+| 3 | TS-27, TS-37, TS-28, TS-14, TS-15, TS-16, TS-17 | Cotización, podio, benchmark, perfiles y débito de créditos. |
 | 4 | TS-18 a TS-22, TS-35 | Compras con Mercado Pago y tareas periódicas. |
 | 5 | TS-29 a TS-32 | Itinerarios guardados. |
 
@@ -691,6 +691,8 @@ Escenario: Rate limiting
 ### TS-34 · Outbox, bus de eventos y consumidores
 
 **Como** desarrollador **quiero** el relay del outbox y los handlers de `iam.user_verified` y `iam.user_deleted` **para** integrar contextos de forma confiable.
+
+Componentes: **OutboxRelay**, **InMemoryEventBus**, **OpenWallet**, **ForfeitWallet**, **CreditWallet** (*open*, *forfeit*), **DeleteUserItineraries**.
 
 ```gherkin
 Escenario: Entrega

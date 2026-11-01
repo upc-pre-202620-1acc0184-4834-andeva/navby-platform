@@ -38,7 +38,7 @@ Reglas: RN-05, RN-06, RN-07 y RN-14, y las secciones 5.1 y 5.2 de [navby-documen
 
 Se construye una vez en `lifespan` y nunca cambia en ejecución.
 
-**Agrupación de ciudades (RN-06).** `CityKey` = nombre de ciudad + país, normalizados sin tildes ni mayúsculas. Dentro de cada clave, los aeropuertos se agrupan solo si están a menos de 80 km entre sí. Así se separan homónimos lejanos, como Columbus (Ohio) y Columbus (Georgia), que comparten nombre y país en OpenFlights. OpenFlights registra algunos aeropuertos metropolitanos con otro nombre de ciudad (Newark `EWR`). `airport_city_overrides.csv` corrige esa ciudad antes de agrupar, así que EWR aparece dentro de New York (está a 26 km de JFK). En el dataset hay 3,216 ciudades con un aeropuerto, 59 con dos, 5 con tres y una (Londres) con cinco.
+**Agrupación de ciudades (RN-06).** `CityKey` = nombre de ciudad + país, normalizados sin tildes ni mayúsculas. Dentro de cada clave, los aeropuertos se agrupan solo si están a menos de 80 km entre sí. Así se separan homónimos lejanos, como Columbus (Ohio) y Columbus (Georgia), que comparten nombre y país en OpenFlights. OpenFlights registra algunos aeropuertos metropolitanos con otro nombre de ciudad (Newark `EWR`). `airport_city_overrides.csv` corrige esa ciudad antes de agrupar, así que EWR aparece dentro de New York (está a 26 km de JFK). En el dataset hay 3,244 ciudades con un aeropuerto, 48 con dos, 3 con tres y una (Londres) con cinco.
 
 ### Entidades y value objects
 
