@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -11,9 +12,20 @@ def main() -> int:
     run_paid_quotes = os.environ.get("RUN_PAID_QUOTES", "false").lower() == "true"
 
     with httpx.Client(timeout=35.0) as client:
-        r_health = client.get(f"{base_url}/health")
-        if r_health.status_code != 200:
-            print(f"Health check failed: {r_health.status_code} {r_health.text}")
+        r_health: httpx.Response | None = None
+        for _ in range(15):
+            try:
+                r_health = client.get(f"{base_url}/health")
+                if r_health.status_code == 200:
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(2.0)
+
+        if r_health is None or r_health.status_code != 200:
+            code = r_health.status_code if r_health is not None else "no-response"
+            text = r_health.text if r_health is not None else ""
+            print(f"Health check failed: {code} {text}")
             return 1
         health_data = r_health.json()
         if health_data.get("graph", {}).get("nodes") != 3354:
