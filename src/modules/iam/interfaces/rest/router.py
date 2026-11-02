@@ -173,6 +173,17 @@ def _clear_refresh_cookie(response: Response, settings: Settings) -> None:
 
 @router.post(
     "/auth/register",
+    summary="Registrar cuenta con correo y contraseña",
+    description=(
+        "Crea una cuenta nueva en estado `email_verified = false`, valida que el dominio "
+        "no sea un correo desechable (`RN-19`), cifra la contraseña con **bcrypt (`cost=12`)** "
+        "y envía un código OTP de 6 dígitos por correo (vigencia de 10 minutos en Redis).\n\n"
+        "- **Rate limit:** máximo 5 solicitudes por minuto por IP.\n"
+        "- **Errores posibles:** `409 EMAIL_ALREADY_REGISTERED`, `422 "
+        "DISPOSABLE_EMAIL_NOT_ALLOWED`, "
+        "`422 VALIDATION_ERROR` (contraseña < 8 caracteres, sin letras o números, o términos "
+        "no aceptados)."
+    ),
     response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(rate_limit("register", client_ip_key, 5))],
@@ -215,6 +226,14 @@ async def register(
 
 @router.post(
     "/auth/verify-email",
+    summary="Verificar correo con código OTP de 6 dígitos",
+    description=(
+        "Valida el código OTP de 6 dígitos enviado al correo del usuario, marca la cuenta como "
+        "`email_verified = true`, publica el evento `iam.user_verified` en el outbox transaccional "
+        "(que abre automáticamente su billetera con **10 créditos gratuitos mensuales**, `RN-14`) "
+        "y devuelve la sesión activa (`access_token` + cookie `navby_refresh`).\n\n"
+        "- **Límite de intentos:** máximo 5 intentos fallidos por código OTP (`OTP_MAX_ATTEMPTS`)."
+    ),
     response_model=SessionResponse,
     dependencies=[Depends(rate_limit("otp", client_ip_key, 10))],
     responses={
@@ -247,6 +266,13 @@ async def verify_email(
 
 @router.post(
     "/auth/verify-email/resend",
+    summary="Reenviar código OTP de verificación",
+    description=(
+        "Genera y envía un nuevo código OTP de 6 dígitos si la cuenta existe y aún no está "
+        "verificada. "
+        "Por seguridad responde siempre `202 Accepted` sin revelar si el correo existe y aplica un "
+        "enfriamiento (*cooldown*) de 60 segundos en Redis."
+    ),
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(rate_limit("otp", client_ip_key, 10))],
     responses={
@@ -272,6 +298,18 @@ async def resend_verification(
 
 @router.post(
     "/auth/login",
+    summary="Iniciar sesión con correo y contraseña",
+    description=(
+        "Autentica al usuario verificando su hash bcrypt y emite un **`access_token` JWT "
+        "(HS256, 15 min)** "
+        "junto con la cookie `HttpOnly` `navby_refresh` (7 días, `SameSite=Strict`).\n\n"
+        "- 💡 **Para probar en `/docs`:** haz clic en **Try it out** → **Execute** con las "
+        "credenciales "
+        "precargadas (`demo.azure@mail.com` / `Viajar2026`), copia el `access_token` y "
+        "pégalo en el botón **`Authorize 🔒`**.\n"
+        "- **Errores posibles:** `401 INVALID_CREDENTIALS`, `403 EMAIL_NOT_VERIFIED`, `429 "
+        "RATE_LIMITED`."
+    ),
     response_model=SessionResponse,
     dependencies=[Depends(rate_limit("login", client_ip_key, 10))],
     responses={
@@ -307,6 +345,15 @@ async def login(
 
 @router.post(
     "/auth/google",
+    summary="Iniciar sesión o registrarse con Google OAuth 2.0",
+    description=(
+        "Verifica la firma criptográfica RS256 del `id_token` emitido por Google Identity "
+        "Services.\n\n"
+        "- Si el correo ya existe en Navby, vincula el `google_sub` (si aún no lo tenía) e "
+        "inicia sesión.\n"
+        "- Si el usuario es nuevo, exige `accept_terms = true`, crea la cuenta verificada y "
+        "abre su billetera inicial."
+    ),
     response_model=SessionResponse,
     dependencies=[Depends(rate_limit("login", client_ip_key, 10))],
     responses={
@@ -347,6 +394,15 @@ async def login_google(
 
 @router.post(
     "/auth/refresh",
+    summary="Renovar access_token rotando la cookie navby_refresh",
+    description=(
+        "Lee el refresh token desde la cookie `HttpOnly` `navby_refresh`, rota el token "
+        "dentro de la misma "
+        "familia (`family_id`) y emite un nuevo `access_token` de 15 minutos.\n\n"
+        "- **Detección de robo de sesión:** si se presenta un refresh token ya "
+        "rotado/revocado, se revoca "
+        "toda la familia de tokens del dispositivo y se limpia la cookie (`401 UNAUTHENTICATED`)."
+    ),
     response_model=SessionResponse,
     responses={
         401: {"model": ProblemDetails},
@@ -375,6 +431,12 @@ async def refresh_session(
 
 @router.post(
     "/auth/logout",
+    summary="Cerrar sesión y revocar familia de refresh tokens",
+    description=(
+        "Revoca la familia de refresh tokens asociada a la cookie `navby_refresh` y elimina "
+        "la cookie del navegador. "
+        "Es idempotente y siempre devuelve `204 No Content`."
+    ),
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         500: {"model": ProblemDetails},
@@ -398,6 +460,15 @@ async def logout(
 
 @router.post(
     "/auth/forgot-password",
+    summary="Solicitar enlace de restablecimiento de contraseña",
+    description=(
+        "Genera un token criptográfico de 64 caracteres hexadecimales con vigencia de 15 "
+        "minutos en Redis "
+        "y envía el enlace de recuperación al correo del usuario. Siempre responde `202 "
+        "Accepted` para "
+        "evitar enumeración de cuentas.\n\n"
+        "- **Rate limit:** máximo 3 solicitudes por minuto por IP."
+    ),
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(rate_limit("forgot_password", client_ip_key, 3))],
     responses={
@@ -426,6 +497,12 @@ async def forgot_password(
 
 @router.post(
     "/auth/reset-password",
+    summary="Restablecer contraseña usando token de recuperación",
+    description=(
+        "Consume el token de recuperación de un solo uso, actualiza la contraseña cifrada "
+        "con bcrypt "
+        "y revoca todas las sesiones activas (`refresh_tokens`) del usuario."
+    ),
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(rate_limit("otp", client_ip_key, 10))],
     responses={
@@ -456,6 +533,13 @@ async def reset_password(
 
 @router.get(
     "/users/me",
+    summary="Obtener perfil del usuario autenticado",
+    description=(
+        "Devuelve los datos de perfil de la cuenta autenticada (`user_id`, `email`, `full_name`, "
+        "`email_verified`, métodos de acceso configurados `has_password` / `has_google` y "
+        "`created_at`).\n\n"
+        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+    ),
     response_model=UserProfileResponse,
     responses={
         401: {"model": ProblemDetails},
@@ -477,6 +561,14 @@ async def get_my_profile(
 
 @router.delete(
     "/users/me",
+    summary="Eliminar cuenta propia de forma permanente",
+    description=(
+        'Elimina el registro del usuario tras validar la palabra exacta `"ELIMINAR"`, revoca sus '
+        "refresh tokens y publica el evento `iam.user_deleted` en el outbox para anular su "
+        "billetera "
+        "(`RN-22`) y borrar todos sus itinerarios guardados.\n\n"
+        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+    ),
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         401: {"model": ProblemDetails},

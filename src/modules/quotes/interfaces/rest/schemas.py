@@ -25,7 +25,22 @@ class PreferencesInput(BaseModel):
 
 
 class SearchQuotesRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "trip_type": "ONE_WAY",
+                "origins": ["LIM"],
+                "destinations": ["MAD"],
+                "departure_date": "2026-12-15",
+                "return_date": None,
+                "passengers": {"adults": 1, "children": 0, "infants": 0},
+                "cabin": "ECONOMY",
+                "currency": "USD",
+                "preferences": {"profile": "BALANCED"},
+            }
+        },
+    )
 
     trip_type: str
     origins: list[str]
@@ -39,7 +54,14 @@ class SearchQuotesRequest(BaseModel):
 
 
 class RerankQuotesRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "profile": "BUDGET",
+            }
+        },
+    )
 
     profile: str
     weights: WeightsInput | None = None

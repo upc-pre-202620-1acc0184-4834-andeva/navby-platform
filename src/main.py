@@ -121,6 +121,14 @@ health_router = APIRouter(prefix="/api/v1", tags=["Sistema"])
 
 @health_router.get(
     "/health",
+    summary="Verificar estado de salud de la plataforma",
+    description=(
+        "Comprueba en tiempo real la disponibilidad de **PostgreSQL 16**, **Redis 7** "
+        "y la integridad del **grafo aéreo de OpenFlights** cargado en memoria "
+        "(exactamente `3,354` aeropuertos IATA y `37,326` aristas dirigidas consolidadas).\n\n"
+        "- Devuelve **`200 OK`** cuando los tres subsistemas están en estado `UP`.\n"
+        "- Devuelve **`503 Service Unavailable`** si algún componente reporta `DOWN`."
+    ),
     response_model=HealthResponse,
     responses={503: {"model": HealthResponse}},
 )
@@ -161,10 +169,119 @@ async def get_health(
     )
 
 
+OPENAPI_DESCRIPTION = (
+    "Backend modular de **Navby**: recomienda el **podio de los 3 mejores vuelos** "
+    "entre dos ciudades combinando **precio, duración y escalas** en un único puntaje "
+    "multicriterio sobre la **Frontera de Pareto**, respaldado por el grafo mundial de "
+    "**OpenFlights** en memoria (**BFS** y **A\\***).\n\n"
+    "---\n\n"
+    "### 🔐 Cómo autenticarse y probar endpoints protegidos en `/docs`\n\n"
+    "1. Despliega **`POST /api/v1/auth/login`** (sección **iam**), haz clic en **Try it out** "
+    "y presiona **Execute** (viene precargado con la cuenta verificada de demostración "
+    "`demo.azure@mail.com` / `Viajar2026`).\n"
+    '2. Copia el valor de `"access_token"` del JSON de respuesta (sin las comillas).\n'
+    "3. Sube al botón **`Authorize 🔒`** (arriba a la derecha), pega el token en **Value** "
+    "y haz clic en **Authorize**.\n"
+    "4. ¡Listo! Todos los endpoints con candado 🔒 enviarán automáticamente el encabezado "
+    "`Authorization: Bearer <access_token>`.\n\n"
+    "---\n\n"
+    "### 🧭 Contextos Delimitados (*Bounded Contexts*)\n\n"
+    "- **Sistema (`/api/v1/health`):** estado de PostgreSQL 16, Redis 7 y el grafo de "
+    "OpenFlights en memoria (`3,354` nodos, `37,326` aristas).\n"
+    "- **iam (`/api/v1/auth`, `/api/v1/users`):** registro con código OTP, login con "
+    "contraseña o Google OAuth, rotación de refresh tokens en cookie `HttpOnly` y "
+    "gestión de cuenta.\n"
+    "- **Routing (`/api/v1/routing`):** autocompletado de ciudades/aeropuertos con alias "
+    "en español y vista previa de ruta óptima con **BFS** (mínimo de escalas) y **A\\*** "
+    "(tiempo mínimo físico $T_{\\min}$ con distancia Haversine).\n"
+    "- **quotes (`/api/v1/quotes`):** cotización real en **FlightAPI**, filtrado de "
+    "**Frontera de Pareto** y ordenamiento multicriterio ponderado para elegir el "
+    "**podio de 3 vuelos** (`BALANCED`, `BUDGET`, `FAST`, `DIRECT`, `CUSTOM`).\n"
+    "- **billing (`/api/v1/billing`):** billetera de créditos (`free_credits` + "
+    "`paid_credits`), historial de movimientos, catálogo de paquetes en soles (`PEN`) "
+    "y órdenes de compra con **Mercado Pago Checkout Pro**.\n"
+    "- **itineraries (`/api/v1/itineraries`):** persistencia de hasta 20 itinerarios "
+    "favoritos por usuario a partir de una sesión de cotización activa.\n\n"
+    "---\n\n"
+    "### 💳 Reglas clave de Créditos y Errores\n\n"
+    "- **Cuota mensual gratuita (`RN-14`):** todo usuario verificado recibe **10 créditos "
+    "gratuitos al mes** (equivalentes a **5 búsquedas**).\n"
+    "- **Costo por búsqueda (`RN-15` a `RN-18`):** cada `POST /api/v1/quotes/search` "
+    "consume **2 créditos** solo cuando FlightAPI devuelve ofertas reales; si hay "
+    "*cache hit* o fallo del proveedor, se cobran **0 créditos**.\n"
+    "- **Reordenamiento gratuito (`RN-13`):** cambiar el perfil o los pesos con "
+    "`POST /api/v1/quotes/{search_id}/rank` recalcula el podio en memoria sin consumir "
+    "créditos.\n"
+    "- **Formato de errores (`RFC 7807`):** cualquier error devuelve "
+    "`application/problem+json` con `type`, `title`, `status`, `detail`, `instance`, "
+    "`code` y `correlation_id`."
+)
+
+OPENAPI_TAGS = [
+    {
+        "name": "Sistema",
+        "description": (
+            "Monitoreo de salud de infraestructura (PostgreSQL, Redis y grafo "
+            "OpenFlights en memoria)."
+        ),
+    },
+    {
+        "name": "iam",
+        "description": (
+            "**Identidad y Acceso (IAM):** registro de usuarios, verificación por OTP "
+            "de 6 dígitos, inicio de sesión con contraseña o Google OAuth, rotación de "
+            "sesión (`navby_refresh` cookie `HttpOnly`), recuperación de contraseña y "
+            "eliminación de cuenta."
+        ),
+    },
+    {
+        "name": "Routing",
+        "description": (
+            "**Grafo Aéreo y Enrutamiento:** autocompletado de ciudades/aeropuertos IATA "
+            "(con soporte de alias en español y sin tildes) y cálculo instantáneo en "
+            "memoria de conectividad aérea mediante **BFS** (mínimo de escalas) y **A\\*** "
+            "(ruta de tiempo mínimo físico $T_{\\min}$)."
+        ),
+    },
+    {
+        "name": "quotes",
+        "description": (
+            "**Cotización y Motor Multicriterio:** búsqueda de ofertas aéreas reales, "
+            "cálculo de la **Frontera de Pareto** (precio, duración y escalas) y "
+            "selección del **podio de los 3 mejores vuelos** con reordenamiento gratuito "
+            "en tiempo real."
+        ),
+    },
+    {
+        "name": "billing",
+        "description": (
+            "**Billetera y Facturación:** consulta de saldo de créditos gratuitos y "
+            "comprados, historial paginado de transacciones, catálogo de paquetes en "
+            "soles (`PEN`) e integración con **Mercado Pago Checkout Pro** (creación de "
+            "órdenes y webhook HMAC-SHA256)."
+        ),
+    },
+    {
+        "name": "itineraries",
+        "description": (
+            "**Itinerarios Guardados:** almacenamiento de ofertas del podio en la "
+            "colección personal del viajero (máximo 20 itinerarios por usuario, con "
+            "operación idempotente)."
+        ),
+    },
+]
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Navby Platform API",
-        version="0.1.0",
+        version="0.12.5",
+        description=OPENAPI_DESCRIPTION,
+        openapi_tags=OPENAPI_TAGS,
+        contact={
+            "name": "Equipo ANDEVA — UPC",
+            "url": "https://github.com/upc-pre-202620-1acc0184-4834-andeva/navby-platform",
+        },
         lifespan=lifespan,
     )
     register_exception_handlers(app)

@@ -29,14 +29,32 @@ routing_router = APIRouter(prefix="/api/v1/routing", tags=["Routing"])
 
 @routing_router.get(
     "/cities",
+    summary="Autocompletar ciudades y aeropuertos IATA",
+    description=(
+        "Busca ciudades y aeropuertos en el grafo en memoria de OpenFlights (`3,354` "
+        "aeropuertos con código IATA).\n\n"
+        '- Soporta búsqueda insensible a mayúsculas y tildes (`"cusco"`, `"nueva york"`, '
+        '`"londres"`), '
+        "alias en español (`data/city_aliases_es.json`) y coincidencia directa por código "
+        'IATA (`"LIM"`, `"MAD"`).\n'
+        "- Agrupa aeropuertos metropolitanos bajo su ciudad principal y devuelve coordenadas "
+        "geográficas (`lat`, `lon`).\n"
+        "- **Gratuito (`RN-03`):** no requiere autenticación ni consume créditos."
+    ),
     response_model=CitiesResponse,
     responses={422: {"model": ProblemDetails}},
 )
 async def get_cities(
     request: Request,
     graph: Annotated[AirportGraph, Depends(get_airport_graph)],
-    q: Annotated[str, Query(description="Texto de búsqueda (≥ 2 caracteres)")],
-    limit: Annotated[int, Query(description="Máximo de resultados (≤ 20)")] = 10,
+    q: Annotated[
+        str,
+        Query(
+            description="Texto de búsqueda (≥ 2 caracteres): ciudad, alias en español o IATA.",
+            examples=["lima", "nueva york", "MAD"],
+        ),
+    ],
+    limit: Annotated[int, Query(description="Máximo de resultados a devolver (1 a 20).")] = 10,
 ) -> CitiesResponse:
     handler = SearchCitiesHandler(graph)
     res = handler.handle(SearchCitiesQuery(q=q, limit=limit))
@@ -47,6 +65,21 @@ async def get_cities(
 
 @routing_router.get(
     "/preview",
+    summary="Previsualizar conectividad aérea y tiempo mínimo físico (BFS + A*)",
+    description=(
+        "Verifica instantáneamente en el grafo en memoria si existe ruta aérea entre el "
+        "conjunto de orígenes "
+        "y destinos (`1` a `5` códigos IATA por lado, `RN-01`) antes de gastar créditos en "
+        "FlightAPI (`RN-05`).\n\n"
+        "- **Algoritmo 1 — BFS (*Breadth-First Search*):** halla el camino con el **menor "
+        "número de escalas** (`min_stops_path`).\n"
+        "- **Algoritmo 2 — A\\* (*A-Star* con heurística admisible Haversine a $900\\text{ "
+        "km/h}$):** halla el camino de "
+        "**tiempo mínimo físico** $T_{\\min}$ (`fastest_path`, incluyendo $45\\text{ min}$ por "
+        "escala interna y $35\\text{ min}$ fijos de rodaje/despegue).\n"
+        "- Ordena hasta los 4 mejores pares `(origin, destination)` candidatos para cotizar.\n"
+        "- **Gratuito (`RN-05`):** no consume créditos (rate limit: 30 req/min por IP)."
+    ),
     response_model=RoutePreviewResponse,
     dependencies=[Depends(rate_limit("routing_preview", client_ip_key, 30))],
     responses={
@@ -58,9 +91,27 @@ async def get_cities(
 async def get_route_preview(
     request: Request,
     graph: Annotated[AirportGraph, Depends(get_airport_graph)],
-    origins: Annotated[str, Query(description="Códigos IATA separados por coma (1-5)")],
-    destinations: Annotated[str, Query(description="Códigos IATA separados por coma (1-5)")],
-    trip_type: Annotated[str, Query(description="ONE_WAY o ROUND_TRIP")] = "ONE_WAY",
+    origins: Annotated[
+        str,
+        Query(
+            description="Códigos IATA de origen separados por coma (1 a 5 aeropuertos).",
+            examples=["LIM"],
+        ),
+    ],
+    destinations: Annotated[
+        str,
+        Query(
+            description="Códigos IATA de destino separados por coma (1 a 5 aeropuertos).",
+            examples=["MAD"],
+        ),
+    ],
+    trip_type: Annotated[
+        str,
+        Query(
+            description="Tipo de viaje: ONE_WAY (solo ida) o ROUND_TRIP (ida y vuelta).",
+            examples=["ONE_WAY", "ROUND_TRIP"],
+        ),
+    ] = "ONE_WAY",
 ) -> RoutePreviewResponse:
     origin_list = [x.strip() for x in origins.split(",") if x.strip()]
     dest_list = [x.strip() for x in destinations.split(",") if x.strip()]
