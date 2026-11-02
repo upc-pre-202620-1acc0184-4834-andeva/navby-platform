@@ -105,6 +105,31 @@ def get_billing_facade() -> BillingFacade:
 
 @router.post(
     "/quotes/search",
+    summary="Cotizar vuelos y calcular el podio multicriterio (Top 3 sobre Frontera de Pareto)",
+    description=(
+        "Ejecuta el flujo completo de búsqueda de vuelos:\n\n"
+        "1. **Validación en grafo (BFS + A\\*):** verifica que exista conectividad aérea y "
+        "obtiene $T_{\\min}$ y hasta los 4 mejores pares `(origin, destination)`.\n"
+        "2. **Verificación de saldo (`RN-15`):** comprueba que el usuario verificado tenga "
+        "al menos **2 créditos** disponibles.\n"
+        "3. **Cotización con caché de 15 min (`RN-17`):** consulta `offer_cache` en Redis; "
+        "si no hay *hit*, consulta **FlightAPI** controlando concurrencia con "
+        "`ProviderGate`.\n"
+        "4. **Algoritmo 3 — Motor Multicriterio (`ParetoRanker`):** filtra las ofertas no "
+        "dominadas en $(\\text{precio}, \\text{duración}, \\text{escalas})$ (**Frontera de "
+        "Pareto**, `RN-08` a `RN-09`), normaliza con min-max usando $T_{\\min}$ como piso de "
+        "duración (`RN-10`) y ordena por el puntaje único $S(x) = w_p \\hat{p}(x) + w_t "
+        "\\hat{t}(x) + w_e \\hat{e}(x)$ para devolver el **podio de hasta 3 vuelos** "
+        "(`RN-11`).\n"
+        "5. **Cobro justo (`RN-16`, `RN-18`):** descuenta **2 créditos** solo si hubo "
+        "llamada al proveedor y se recibieron ofertas; si vino de caché o no hubo vuelos, "
+        "cobra `0` créditos.\n"
+        "6. **Sesión activa (30 min):** guarda las ofertas en Redis bajo `search_id` para "
+        "permitir reordenar el podio gratis o guardar itinerarios.\n\n"
+        "- 🔒 **Requiere usuario verificado:** `Authorization: Bearer <access_token>`.\n"
+        "- **Perfiles soportados:** `BALANCED` $(0.40, 0.35, 0.25)$, `BUDGET` $(0.65, 0.20, "
+        "0.15)$, `FAST` $(0.20, 0.60, 0.20)$, `DIRECT` $(0.20, 0.25, 0.55)$ o `CUSTOM`."
+    ),
     response_model=PodiumResponse,
     dependencies=[
         Depends(get_verified_user),
@@ -168,6 +193,17 @@ async def search_quotes(
 
 @router.post(
     "/quotes/{search_id}/rank",
+    summary="Reordenar el podio en tiempo real con otro perfil o pesos personalizados (0 créditos)",
+    description=(
+        "Recalcula instantáneamente el puntaje ponderado $S(x)$ y el `match_pct` sobre la "
+        "sesión de búsqueda "
+        "almacenada en Redis (`search_id`) aplicando un nuevo perfil (`BALANCED`, `BUDGET`, "
+        "`FAST`, `DIRECT`) "
+        "o pesos personalizados (`CUSTOM`, normalizados automáticamente para sumar `1.0`).\n\n"
+        "- **Gratuito (`RN-13`):** siempre devuelve `credits_charged = 0` sin volver a "
+        "llamar a FlightAPI.\n"
+        "- 🔒 **Requiere usuario verificado propietario de la sesión (`search_id`).**"
+    ),
     response_model=PodiumResponse,
     responses={
         401: {"model": ProblemDetails},
@@ -202,6 +238,14 @@ async def rerank_quotes(
 
 @router.get(
     "/quotes/{search_id}",
+    summary="Recuperar una sesión activa de cotización y su podio actual",
+    description=(
+        "Obtiene el podio vigente y los metadatos de la sesión de cotización (`search_id`, "
+        "TTL de 30 minutos en Redis) "
+        "sin recalcular ni consumir créditos (`credits_charged = 0`).\n\n"
+        "- 🔒 **Requiere usuario verificado propietario de la sesión (`search_id`).**\n"
+        "- Si la sesión expiró o pertenece a otro usuario, devuelve `404 SEARCH_SESSION_EXPIRED`."
+    ),
     response_model=PodiumResponse,
     responses={
         401: {"model": ProblemDetails},

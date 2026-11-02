@@ -49,7 +49,16 @@ router = APIRouter(tags=["itineraries"])
 
 
 class SaveItineraryRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "search_id": "srch_01933c9a7f1870008000000000000001",
+                "offer_id": "off_1",
+                "name": "Viaje Lima - Madrid 2026",
+            }
+        },
+    )
 
     search_id: str
     offer_id: str
@@ -98,6 +107,20 @@ def get_quotes_facade(
 
 @router.post(
     "/itineraries",
+    summary="Guardar un vuelo del podio en la colección de itinerarios del usuario",
+    description=(
+        "Toma una oferta (`offer_id`) perteneciente a una sesión activa de cotización "
+        "(`search_id`) y "
+        "persiste una instantánea completa (`OfferSnapshot` JSONB) en PostgreSQL.\n\n"
+        "- **Idempotente:** si el mismo `(search_id, offer_id)` ya fue guardado por el "
+        "usuario, devuelve `200 OK` con el itinerario existente; si es nuevo, devuelve `201 "
+        "Created`.\n"
+        "- **Límite por usuario:** máximo 20 itinerarios guardados (`409 "
+        "ITINERARY_LIMIT_REACHED`).\n"
+        '- Si `name` se omite o viene vacío, asigna automáticamente `"{origin} → '
+        '{destination} ({departure_date})"`.\n'
+        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+    ),
     response_model=ItineraryResponse,
     responses={
         201: {"model": ItineraryResponse},
@@ -136,6 +159,12 @@ async def save_itinerary(
 
 @router.get(
     "/itineraries",
+    summary="Listar itinerarios guardados por el usuario",
+    description=(
+        "Devuelve la lista paginada de itinerarios guardados por el usuario autenticado, ordenados "
+        "del más reciente al más antiguo (`created_at DESC`).\n\n"
+        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+    ),
     response_model=Page[ItineraryResponse],
     responses={
         401: {"model": ProblemDetails},
@@ -144,8 +173,8 @@ async def save_itinerary(
 )
 async def list_itineraries(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
-    page: int = Query(default=1),
-    page_size: int = Query(default=20),
+    page: int = Query(default=1, description="Número de página (≥ 1)."),
+    page_size: int = Query(default=20, description="Tamaño de página (1 a 100)."),
 ) -> Page[ItineraryResponse]:
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -170,6 +199,14 @@ async def list_itineraries(
 
 @router.get(
     "/itineraries/{itinerary_id}",
+    summary="Obtener el detalle completo de un itinerario guardado",
+    description=(
+        "Recupera un itinerario guardado por su UUID incluyendo el snapshot completo del "
+        "vuelo (`offer`), "
+        "tramos, aerolíneas, coordenadas de aeropuertos y `price_disclaimer`.\n\n"
+        "- 🔒 **Requiere autenticación del propietario (`404 ITINERARY_NOT_FOUND` si no "
+        "existe o pertenece a otro usuario).**"
+    ),
     response_model=ItineraryResponse,
     responses={
         401: {"model": ProblemDetails},
@@ -197,6 +234,14 @@ async def get_itinerary(
 
 @router.delete(
     "/itineraries/{itinerary_id}",
+    summary="Eliminar un itinerario guardado",
+    description=(
+        "Borra permanentemente un itinerario de la colección del usuario autenticado y "
+        "libera un espacio "
+        "dentro de su límite de 20 itinerarios.\n\n"
+        "- 🔒 **Requiere autenticación del propietario (`404 ITINERARY_NOT_FOUND` si no "
+        "existe o pertenece a otro usuario).**"
+    ),
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         401: {"model": ProblemDetails},
