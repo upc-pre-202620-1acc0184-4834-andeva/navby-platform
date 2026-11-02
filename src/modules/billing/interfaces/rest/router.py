@@ -91,7 +91,10 @@ class PackagesListResponse(BaseModel):
 
 
 class CreateOrderRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={"example": {"package_code": "pack_50"}},
+    )
 
     package_code: str
 
@@ -138,6 +141,15 @@ def get_payment_gateway(
 
 @router.get(
     "/billing/wallet",
+    summary="Consultar billetera y saldo de créditos del usuario",
+    description=(
+        "Devuelve el saldo actual de créditos del usuario (`free_credits` + `paid_credits`), "
+        "el número de búsquedas disponibles (`searches_available = total_credits // 2`) y la fecha "
+        "del próximo reinicio mensual de los **10 créditos gratuitos (`RN-14`)**.\n\n"
+        "- Si el periodo mensual venció, aplica automáticamente el *lazy monthly reset* con "
+        "bloqueo `SELECT ... FOR UPDATE`.\n"
+        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+    ),
     response_model=WalletResponse,
     responses={
         401: {"model": ProblemDetails},
@@ -167,6 +179,13 @@ async def get_wallet(
 
 @router.get(
     "/billing/transactions",
+    summary="Listar historial paginado de movimientos de créditos",
+    description=(
+        "Devuelve el libro mayor inmutable de transacciones (`INITIAL_GRANT`, "
+        "`MONTHLY_RESET`, `PURCHASE`, "
+        "`SEARCH_DEBIT`, `FORFEITED`) ordenado del movimiento más reciente al más antiguo.\n\n"
+        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+    ),
     response_model=Page[TransactionItemResponse],
     responses={
         401: {"model": ProblemDetails},
@@ -176,8 +195,8 @@ async def get_wallet(
 async def list_transactions(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(get_uow)],
-    page: Annotated[int, Query()] = 1,
-    page_size: Annotated[int, Query()] = 20,
+    page: Annotated[int, Query(description="Número de página (≥ 1).")] = 1,
+    page_size: Annotated[int, Query(description="Tamaño de página (1 a 100).")] = 20,
 ) -> Page[TransactionItemResponse]:
     handler = ListTransactionsHandler(
         uow=uow,
@@ -213,6 +232,17 @@ async def list_transactions(
 
 @router.get(
     "/billing/packages",
+    summary="Listar catálogo oficial de paquetes de créditos (PEN)",
+    description=(
+        "Devuelve los 3 paquetes de créditos comprables que no caducan (`RN-21`):\n\n"
+        "- **`pack_20` (Explorador):** 20 créditos (10 búsquedas) — `S/ 15.00 PEN` (`$3.99 "
+        "USD` ref.).\n"
+        "- **`pack_50` (Viajero):** 50 créditos (25 búsquedas) — `S/ 30.00 PEN` (`$7.99 USD` "
+        "ref.).\n"
+        "- **`pack_120` (Trotamundos):** 120 créditos (60 búsquedas) — `S/ 56.00 PEN` "
+        "(`$14.99 USD` ref.).\n\n"
+        "Público: no requiere autenticación."
+    ),
     response_model=PackagesListResponse,
     responses={
         500: {"model": ProblemDetails},
@@ -239,6 +269,13 @@ async def list_packages() -> PackagesListResponse:
 
 @router.post(
     "/billing/orders",
+    summary="Crear orden de compra de créditos en Mercado Pago Checkout Pro",
+    description=(
+        "Crea una orden `PENDING` con vigencia de 24 horas y genera una preferencia de pago en "
+        "**Mercado Pago Checkout Pro (Sandbox)** devolviendo el `checkout_url` para "
+        "redirigir al usuario.\n\n"
+        "- 🔒 **Requiere usuario verificado:** `Authorization: Bearer <access_token>`."
+    ),
     response_model=OrderCreatedResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(get_verified_user)],
@@ -283,6 +320,14 @@ async def create_order(
 
 @router.get(
     "/billing/orders/{order_id}",
+    summary="Consultar el estado de una orden de compra",
+    description=(
+        "Permite a la WebApp consultar el estado actual de una orden (`PENDING`, `PAID`, "
+        "`FAILED`, `EXPIRED`) "
+        "cuando el usuario regresa desde la pasarela de Mercado Pago.\n\n"
+        "- 🔒 **Requiere autenticación del propietario de la orden (`404 ORDER_NOT_FOUND` si "
+        "pertenece a otro usuario).**"
+    ),
     response_model=OrderDetailResponse,
     responses={
         401: {"model": ProblemDetails},
@@ -315,6 +360,13 @@ async def get_order(
 
 @router.post(
     "/billing/webhooks/mercadopago",
+    summary="Recibir notificación webhook de pago desde Mercado Pago",
+    description=(
+        "Valida la firma HMAC-SHA256 del encabezado `X-Signature` (`ts=...,v1=...`), "
+        "consulta el estado autoritativo "
+        "del pago en Mercado Pago y acredita de forma **idempotente** los `paid_credits` en "
+        "PostgreSQL con bloqueo de fila."
+    ),
     responses={
         401: {"model": ProblemDetails},
     },
