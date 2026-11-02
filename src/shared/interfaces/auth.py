@@ -3,16 +3,20 @@ from uuid import UUID
 
 import jwt
 from fastapi import Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.shared.application.application_error import ApplicationError
 from src.shared.application.current_user import CurrentUser
 from src.shared.infrastructure.settings import Settings, get_settings
 from src.shared.interfaces.http_errors import ProblemHttpError
 
+_bearer_scheme = HTTPBearer(auto_error=False)
+
 
 async def get_current_user(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
+    _credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)] = None,
 ) -> CurrentUser:
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
