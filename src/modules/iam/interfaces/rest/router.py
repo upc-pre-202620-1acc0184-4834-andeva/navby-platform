@@ -175,14 +175,13 @@ def _clear_refresh_cookie(response: Response, settings: Settings) -> None:
     "/auth/register",
     summary="Registrar cuenta con correo y contraseña",
     description=(
-        "Crea una cuenta nueva en estado `email_verified = false`, valida que el dominio "
-        "no sea un correo desechable (`RN-19`), cifra la contraseña con **bcrypt (`cost=12`)** "
-        "y envía un código OTP de 6 dígitos por correo (vigencia de 10 minutos en Redis).\n\n"
-        "- **Rate limit:** máximo 5 solicitudes por minuto por IP.\n"
-        "- **Errores posibles:** `409 EMAIL_ALREADY_REGISTERED`, `422 "
-        "DISPOSABLE_EMAIL_NOT_ALLOWED`, "
-        "`422 VALIDATION_ERROR` (contraseña < 8 caracteres, sin letras o números, o términos "
-        "no aceptados)."
+        "Crea la cuenta con `email_verified = false` y envía un OTP de 6 dígitos válido "
+        "por 10 minutos. Exige aceptar los Términos y la Política de Privacidad (RL-01) "
+        "y rechaza correos de dominios desechables (RN-17). La contraseña debe tener de "
+        "8 a 72 caracteres con letras y números.\n\n"
+        "- **Rate limit:** 5 por minuto por IP.\n"
+        "- **Errores:** `409 EMAIL_ALREADY_REGISTERED`, `422 TERMS_NOT_ACCEPTED`, `422 "
+        "DISPOSABLE_EMAIL`, `422 VALIDATION_ERROR`."
     ),
     response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
@@ -228,11 +227,11 @@ async def register(
     "/auth/verify-email",
     summary="Verificar correo con código OTP de 6 dígitos",
     description=(
-        "Valida el código OTP de 6 dígitos enviado al correo del usuario, marca la cuenta como "
-        "`email_verified = true`, publica el evento `iam.user_verified` en el outbox transaccional "
-        "(que abre automáticamente su billetera con **10 créditos gratuitos mensuales**, `RN-14`) "
-        "y devuelve la sesión activa (`access_token` + cookie `navby_refresh`).\n\n"
-        "- **Límite de intentos:** máximo 5 intentos fallidos por código OTP (`OTP_MAX_ATTEMPTS`)."
+        "Valida el OTP, marca el correo como verificado y abre la sesión "
+        "(`access_token` y cookie `navby_refresh`). Al verificar se crea la billetera "
+        "con los 10 créditos gratuitos del día (RN-17).\n\n"
+        "- **Errores:** `400 INVALID_OTP` (también si el correo no existe o ya está "
+        "verificado) y `429 OTP_ATTEMPTS_EXCEEDED` tras 5 intentos fallidos."
     ),
     response_model=SessionResponse,
     dependencies=[Depends(rate_limit("otp", client_ip_key, 10))],
@@ -268,10 +267,8 @@ async def verify_email(
     "/auth/verify-email/resend",
     summary="Reenviar código OTP de verificación",
     description=(
-        "Genera y envía un nuevo código OTP de 6 dígitos si la cuenta existe y aún no está "
-        "verificada. "
-        "Por seguridad responde siempre `202 Accepted` sin revelar si el correo existe y aplica un "
-        "enfriamiento (*cooldown*) de 60 segundos en Redis."
+        "Envía un OTP nuevo que invalida el anterior. Responde siempre `202` para no "
+        "revelar si el correo existe. Como máximo un envío por minuto por correo."
     ),
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(rate_limit("otp", client_ip_key, 10))],
@@ -300,15 +297,12 @@ async def resend_verification(
     "/auth/login",
     summary="Iniciar sesión con correo y contraseña",
     description=(
-        "Autentica al usuario verificando su hash bcrypt y emite un **`access_token` JWT "
-        "(HS256, 15 min)** "
-        "junto con la cookie `HttpOnly` `navby_refresh` (7 días, `SameSite=Strict`).\n\n"
-        "- 💡 **Para probar en `/docs`:** haz clic en **Try it out** → **Execute** con las "
-        "credenciales "
-        "precargadas (`demo.azure@mail.com` / `Viajar2026`), copia el `access_token` y "
-        "pégalo en el botón **`Authorize 🔒`**.\n"
-        "- **Errores posibles:** `401 INVALID_CREDENTIALS`, `403 EMAIL_NOT_VERIFIED`, `429 "
-        "RATE_LIMITED`."
+        "Devuelve la **Session**: `access_token` JWT (HS256, 15 min) y la cookie "
+        "`navby_refresh` (`HttpOnly`, `SameSite=Strict`).\n\n"
+        "- **Para probar en `/docs`:** ejecuta este endpoint con tu cuenta verificada, "
+        "copia el `access_token` y pégalo en **Authorize**.\n"
+        "- **Rate limit:** 10 por minuto por IP.\n"
+        "- **Errores:** `401 INVALID_CREDENTIALS`, `403 EMAIL_NOT_VERIFIED`."
     ),
     response_model=SessionResponse,
     dependencies=[Depends(rate_limit("login", client_ip_key, 10))],
@@ -347,12 +341,10 @@ async def login(
     "/auth/google",
     summary="Iniciar sesión o registrarse con Google OAuth 2.0",
     description=(
-        "Verifica la firma criptográfica RS256 del `id_token` emitido por Google Identity "
-        "Services.\n\n"
-        "- Si el correo ya existe en Navby, vincula el `google_sub` (si aún no lo tenía) e "
-        "inicia sesión.\n"
-        "- Si el usuario es nuevo, exige `accept_terms = true`, crea la cuenta verificada y "
-        "abre su billetera inicial."
+        "Valida el `id_token` de Google Identity Services. Si la cuenta no existe la "
+        "crea (entonces `accept_terms` es obligatorio, RL-01); si existe, inicia "
+        "sesión. Devuelve la **Session**.\n\n"
+        "- **Errores:** `401 INVALID_GOOGLE_TOKEN`, `422 TERMS_NOT_ACCEPTED`."
     ),
     response_model=SessionResponse,
     dependencies=[Depends(rate_limit("login", client_ip_key, 10))],
@@ -396,12 +388,9 @@ async def login_google(
     "/auth/refresh",
     summary="Renovar access_token rotando la cookie navby_refresh",
     description=(
-        "Lee el refresh token desde la cookie `HttpOnly` `navby_refresh`, rota el token "
-        "dentro de la misma "
-        "familia (`family_id`) y emite un nuevo `access_token` de 15 minutos.\n\n"
-        "- **Detección de robo de sesión:** si se presenta un refresh token ya "
-        "rotado/revocado, se revoca "
-        "toda la familia de tokens del dispositivo y se limpia la cookie (`401 UNAUTHENTICATED`)."
+        "Sin cuerpo: lee la cookie `navby_refresh`, la rota y devuelve una **Session** "
+        "nueva. Si la cookie es inválida, expiró o fue reutilizada fuera de la ventana "
+        "de 30 s, responde `401 INVALID_REFRESH_TOKEN` y borra la cookie."
     ),
     response_model=SessionResponse,
     responses={
@@ -433,9 +422,7 @@ async def refresh_session(
     "/auth/logout",
     summary="Cerrar sesión y revocar familia de refresh tokens",
     description=(
-        "Revoca la familia de refresh tokens asociada a la cookie `navby_refresh` y elimina "
-        "la cookie del navegador. "
-        "Es idempotente y siempre devuelve `204 No Content`."
+        "Sin cuerpo. Revoca el refresh token de la cookie y la borra. Responde `204` siempre."
     ),
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
@@ -462,12 +449,9 @@ async def logout(
     "/auth/forgot-password",
     summary="Solicitar enlace de restablecimiento de contraseña",
     description=(
-        "Genera un token criptográfico de 64 caracteres hexadecimales con vigencia de 15 "
-        "minutos en Redis "
-        "y envía el enlace de recuperación al correo del usuario. Siempre responde `202 "
-        "Accepted` para "
-        "evitar enumeración de cuentas.\n\n"
-        "- **Rate limit:** máximo 3 solicitudes por minuto por IP."
+        "Envía un enlace `{WEBAPP_URL}/reset-password?token=...` válido por 30 minutos. "
+        "Responde siempre `202` para no revelar si el correo existe.\n\n"
+        "- **Rate limit:** 3 por minuto por IP."
     ),
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(rate_limit("forgot_password", client_ip_key, 3))],
@@ -499,9 +483,8 @@ async def forgot_password(
     "/auth/reset-password",
     summary="Restablecer contraseña usando token de recuperación",
     description=(
-        "Consume el token de recuperación de un solo uso, actualiza la contraseña cifrada "
-        "con bcrypt "
-        "y revoca todas las sesiones activas (`refresh_tokens`) del usuario."
+        "Define la contraseña nueva y revoca todas las sesiones del usuario.\n\n"
+        "- **Errores:** `400 INVALID_RESET_TOKEN`, `422 VALIDATION_ERROR`."
     ),
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(rate_limit("otp", client_ip_key, 10))],
@@ -535,10 +518,9 @@ async def reset_password(
     "/users/me",
     summary="Obtener perfil del usuario autenticado",
     description=(
-        "Devuelve los datos de perfil de la cuenta autenticada (`user_id`, `email`, `full_name`, "
-        "`email_verified`, métodos de acceso configurados `has_password` / `has_google` y "
-        "`created_at`).\n\n"
-        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+        "Devuelve el perfil propio, incluido si la cuenta tiene contraseña "
+        "(`has_password`) o Google vinculado (`has_google`).\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`."
     ),
     response_model=UserProfileResponse,
     responses={
@@ -563,11 +545,11 @@ async def get_my_profile(
     "/users/me",
     summary="Eliminar cuenta propia de forma permanente",
     description=(
-        'Elimina el registro del usuario tras validar la palabra exacta `"ELIMINAR"`, revoca sus '
-        "refresh tokens y publica el evento `iam.user_deleted` en el outbox para anular su "
-        "billetera "
-        "(`RN-22`) y borrar todos sus itinerarios guardados.\n\n"
-        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+        'Exige `{"confirmation": "ELIMINAR"}`. Anonimiza nombre y correo, borra '
+        "sesiones e itinerarios y anula los créditos; conserva las órdenes de compra "
+        "por obligación tributaria (RL-02). Borra la cookie.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- **Error:** `422 VALIDATION_ERROR` si la confirmación no es exacta."
     ),
     status_code=status.HTTP_204_NO_CONTENT,
     responses={

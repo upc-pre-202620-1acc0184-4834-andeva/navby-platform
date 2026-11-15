@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
@@ -45,6 +46,7 @@ from src.shared.infrastructure.in_memory_event_bus import InMemoryEventBus
 from src.shared.infrastructure.outbox_relay import OutboxRelay
 from src.shared.infrastructure.periodic_tasks import PeriodicTasks
 from src.shared.infrastructure.redis_client import RedisClient, get_shared_redis
+from src.shared.infrastructure.settings import get_settings
 from src.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
 from src.shared.interfaces.http_errors import register_exception_handlers
 
@@ -81,6 +83,18 @@ def build_outbox_relay(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
+    # httpx registra cada URL en INFO y la clave de FlightAPI viaja dentro de la URL.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    problems = get_settings().production_problems()
+    if problems:
+        raise RuntimeError(
+            "Refusing to start in production; missing or unsafe settings: " + ", ".join(problems)
+        )
+
     graph = init_airport_graph()
     app.state.airport_graph = graph
 
@@ -176,9 +190,8 @@ OPENAPI_DESCRIPTION = (
     "**OpenFlights** en memoria (**BFS** y **A\\***).\n\n"
     "---\n\n"
     "### 🔐 Cómo autenticarse y probar endpoints protegidos en `/docs`\n\n"
-    "1. Despliega **`POST /api/v1/auth/login`** (sección **iam**), haz clic en **Try it out** "
-    "y presiona **Execute** (viene precargado con la cuenta verificada de demostración "
-    "`demo.azure@mail.com` / `Viajar2026`).\n"
+    "1. Despliega **`POST /api/v1/auth/login`** (sección **iam**), haz clic en **Try it out**, "
+    "escribe el correo y la contraseña de tu cuenta verificada y presiona **Execute**.\n"
     '2. Copia el valor de `"access_token"` del JSON de respuesta (sin las comillas).\n'
     "3. Sube al botón **`Authorize 🔒`** (arriba a la derecha), pega el token en **Value** "
     "y haz clic en **Authorize**.\n"
@@ -196,20 +209,21 @@ OPENAPI_DESCRIPTION = (
     "(tiempo mínimo físico $T_{\\min}$ con distancia Haversine).\n"
     "- **quotes (`/api/v1/quotes`):** cotización real en **FlightAPI**, filtrado de "
     "**Frontera de Pareto** y ordenamiento multicriterio ponderado para elegir el "
-    "**podio de 3 vuelos** (`BALANCED`, `BUDGET`, `FAST`, `DIRECT`, `CUSTOM`).\n"
+    "**podio de 3 vuelos** (`BALANCED`, `SAVER`, `FAST`, `CUSTOM`).\n"
     "- **billing (`/api/v1/billing`):** billetera de créditos (`free_credits` + "
     "`paid_credits`), historial de movimientos, catálogo de paquetes en soles (`PEN`) "
     "y órdenes de compra con **Mercado Pago Checkout Pro**.\n"
-    "- **itineraries (`/api/v1/itineraries`):** persistencia de hasta 20 itinerarios "
-    "favoritos por usuario a partir de una sesión de cotización activa.\n\n"
+    "- **itineraries (`/api/v1/itineraries`):** persistencia de hasta 50 itinerarios "
+    "por usuario a partir de una sesión de cotización activa.\n\n"
     "---\n\n"
     "### 💳 Reglas clave de Créditos y Errores\n\n"
-    "- **Cuota mensual gratuita (`RN-14`):** todo usuario verificado recibe **10 créditos "
-    "gratuitos al mes** (equivalentes a **5 búsquedas**).\n"
-    "- **Costo por búsqueda (`RN-15` a `RN-18`):** cada `POST /api/v1/quotes/search` "
-    "consume **2 créditos** solo cuando FlightAPI devuelve ofertas reales; si hay "
-    "*cache hit* o fallo del proveedor, se cobran **0 créditos**.\n"
-    "- **Reordenamiento gratuito (`RN-13`):** cambiar el perfil o los pesos con "
+    "- **Créditos gratuitos:** todo usuario verificado recibe **10 créditos gratuitos "
+    "por día** (2 búsquedas). No se acumulan y se renuevan a las 00:00 de Lima.\n"
+    "- **Costo por búsqueda (`RN-08`, `RN-09`):** cada `POST /api/v1/quotes/search` "
+    "cuesta **5 créditos** si al menos un par requiere llamar a FlightAPI y **0** si "
+    "todo está en caché (30 min). Los créditos se reembolsan si todas las llamadas "
+    "fallan o si no hay vuelos.\n"
+    "- **Reordenamiento gratuito (`RN-11`):** cambiar el perfil o los pesos con "
     "`POST /api/v1/quotes/{search_id}/rank` recalcula el podio en memoria sin consumir "
     "créditos.\n"
     "- **Formato de errores (`RFC 7807`):** cualquier error devuelve "
@@ -265,7 +279,7 @@ OPENAPI_TAGS = [
         "name": "itineraries",
         "description": (
             "**Itinerarios Guardados:** almacenamiento de ofertas del podio en la "
-            "colección personal del viajero (máximo 20 itinerarios por usuario, con "
+            "colección personal del viajero (máximo 50 itinerarios por usuario, con "
             "operación idempotente)."
         ),
     },

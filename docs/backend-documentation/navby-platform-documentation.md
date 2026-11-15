@@ -183,15 +183,24 @@ La VM solo expone los puertos 80, 443 y 22. El crédito de Azure de $100 USD alc
 | `POSTGRES_PORT` | Puerto del host donde `docker-compose.dev.yml` publica PostgreSQL. Debe coincidir con el de `DATABASE_URL`. | `5432` (otro, p. ej. `55432`, si Windows reserva ese puerto) | No aplica |
 | `JWT_SECRET` | Firma HS256 de los tokens de acceso (≥ 32 bytes aleatorios). | Cualquier valor | Secreto único |
 | `GOOGLE_CLIENT_ID` | Audiencia esperada del `id_token` de Google. | Cliente OAuth propio de desarrollo | Cliente OAuth de producción |
-| `FLIGHT_API_KEY` | Clave de FlightAPI. Si falta, se usa el adaptador mock. | Vacía (mock) | Clave del plan LITE |
+| `FLIGHT_API_KEY` | Clave de FlightAPI. Si falta en `local`, se usa el adaptador mock. | Vacía (mock) | Clave del plan LITE |
 | `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` | Pagos y validación de webhooks. | Credenciales `TEST-` propias | Credenciales `TEST-` del proyecto (siempre sandbox, RL-04) |
 | `RESEND_API_KEY` | Correo. Si falta, el OTP se escribe en el log (solo `local`). | Vacía | Clave con dominio `andeva.tech` |
+| `RESEND_FROM_EMAIL` | Remitente de los correos. Su dominio debe estar verificado en Resend. | No aplica | `Navby <no-reply@andeva.tech>` (valor por defecto) |
 | `WEBAPP_URL` | Base de los enlaces de correo y de las `back_urls` de Mercado Pago. | `http://localhost:5173/app` | `https://navby.andeva.tech/app` |
 | `API_PUBLIC_URL` | URL directa de la VM, usada como `notification_url` del webhook. | Túnel opcional (`ngrok`) | `https://navby-api.<región>.cloudapp.azure.com` |
 | `COOKIE_SECURE` | Atributo `Secure` de la cookie `navby_refresh`. | `false` | `true` |
 | `TRUST_PROXY_HEADERS` | Toma la IP del cliente de `X-Forwarded-For` (proxy de Vercel). | `false` | `true` |
 | `FLIGHT_API_MAX_CONCURRENCY` | Llamadas simultáneas del plan de FlightAPI (RN-16). | `5` | `5` |
 | `TERMS_VERSION` | Versión vigente de los Términos y la Política de Privacidad (RL-01). | `2026-10` | `2026-10` |
+
+**Arranque seguro.** Con `APP_ENV=production` la API **no arranca** si:
+- `JWT_SECRET` es el valor de ejemplo o tiene menos de 32 caracteres;
+- `COOKIE_SECURE` no es `true`;
+- `WEBAPP_URL` no empieza con `https://`;
+- falta `GOOGLE_CLIENT_ID`, `FLIGHT_API_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `RESEND_API_KEY` o `API_PUBLIC_URL`.
+
+El error de arranque nombra las variables, nunca sus valores. Así producción no puede servir vuelos del mock, perder correos ni firmar tokens con un secreto público.
 
 ### Modos de desarrollo (costo cero)
 

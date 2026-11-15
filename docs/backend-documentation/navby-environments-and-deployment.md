@@ -34,6 +34,8 @@ Mercado Pago (webhook) ───────────────────
 }
 ```
 
+Los dos rewrites de `/app` se agregan recién cuando la webapp esté desplegada en `navby-webapp.vercel.app`. Mientras tanto el `vercel.json` solo tiene el de `/api`: apuntar a un nombre `vercel.app` que todavía no es nuestro permitiría que un tercero lo registre y sirva contenido bajo nuestro dominio.
+
 ### 1.1. URL del backend en Azure
 
 La VM recibe una IP pública **estática** con una **etiqueta DNS** de Azure (gratis, sin dominio propio): `navby-api.<región>.cloudapp.azure.com`. Por ejemplo, `navby-api.eastus2.cloudapp.azure.com`. Caddy obtiene el certificado TLS de Let's Encrypt para ese nombre.
@@ -76,7 +78,8 @@ No hay un entorno *staging* separado: la VM de $100 USD de crédito no alcanza p
    - el archivo `/opt/navby/.env` de la VM (permisos `600`);
    - los *secrets* del *environment* `production` de GitHub (solo la llave SSH de despliegue y el host).
 4. **Quien desarrolla no ve los secretos, pero sí puede desplegar y verificar.** Hace merge a `main`; GitHub Actions entra a la VM con la llave SSH guardada como secret, actualiza el código, reconstruye los contenedores y ejecuta las pruebas de humo. El resultado y los logs quedan en la pestaña *Actions*.
-5. **Rotación:** si un secreto se filtra, se cambia en el proveedor, en `/opt/navby/.env` y se redespliega. Ningún secreto se repite entre local y producción.
+5. **Arranque seguro:** con `APP_ENV=production` el backend no arranca si falta un secreto o si `JWT_SECRET` es el valor de ejemplo (ver [variables de entorno](navby-platform-documentation.md#variables-de-entorno)). El despliegue falla, la prueba de humo no pasa y el workflow vuelve al commit anterior.
+6. **Rotación:** si un secreto se filtra, se cambia en el proveedor, en `/opt/navby/.env` y se redespliega. Ningún secreto se repite entre local y producción.
 
 ### 2.2. Verificar que producción funciona
 

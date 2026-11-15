@@ -9,9 +9,9 @@ class RegisterRequest(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "email": "viajero.nuevo@mail.com",
+                "email": "ana@mail.com",
                 "password": "Viajar2026",
-                "full_name": "Carlos Mendoza",
+                "full_name": "Ana Torres",
                 "accept_terms": True,
             }
         },
@@ -36,7 +36,7 @@ class VerifyEmailRequest(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "email": "viajero.nuevo@mail.com",
+                "email": "ana@mail.com",
                 "code": "123456",
             }
         },
@@ -49,7 +49,7 @@ class VerifyEmailRequest(BaseModel):
 class ResendVerificationRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={"example": {"email": "viajero.nuevo@mail.com"}},
+        json_schema_extra={"example": {"email": "ana@mail.com"}},
     )
 
     email: str
@@ -60,7 +60,7 @@ class LoginRequest(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "email": "demo.azure@mail.com",
+                "email": "ana@mail.com",
                 "password": "Viajar2026",
             }
         },
@@ -106,7 +106,7 @@ class SessionResponse(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={"example": {"email": "demo.azure@mail.com"}},
+        json_schema_extra={"example": {"email": "ana@mail.com"}},
     )
 
     email: str

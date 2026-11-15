@@ -54,7 +54,7 @@ class SaveItineraryRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "search_id": "srch_01933c9a7f1870008000000000000001",
-                "offer_id": "off_1",
+                "offer_id": "9f2c41ab07d3e655",
                 "name": "Viaje Lima - Madrid 2026",
             }
         },
@@ -109,17 +109,14 @@ def get_quotes_facade(
     "/itineraries",
     summary="Guardar un vuelo del podio en la colección de itinerarios del usuario",
     description=(
-        "Toma una oferta (`offer_id`) perteneciente a una sesión activa de cotización "
-        "(`search_id`) y "
-        "persiste una instantánea completa (`OfferSnapshot` JSONB) en PostgreSQL.\n\n"
-        "- **Idempotente:** si el mismo `(search_id, offer_id)` ya fue guardado por el "
-        "usuario, devuelve `200 OK` con el itinerario existente; si es nuevo, devuelve `201 "
-        "Created`.\n"
-        "- **Límite por usuario:** máximo 20 itinerarios guardados (`409 "
-        "ITINERARY_LIMIT_REACHED`).\n"
-        '- Si `name` se omite o viene vacío, asigna automáticamente `"{origin} → '
-        '{destination} ({departure_date})"`.\n'
-        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+        "Guarda una oferta del podio de una búsqueda vigente como instantánea. Guardar "
+        "es gratis; máximo 50 itinerarios por usuario (RN-13).\n\n"
+        "- `201` si es nuevo, `200` si ya estaba guardado.\n"
+        "- `name` es opcional; por defecto se arma con origen, destino y fecha de "
+        "salida.\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- **Errores:** `404 SEARCH_NOT_FOUND`, `404 OFFER_NOT_FOUND`, `409 "
+        "ITINERARY_LIMIT_REACHED`."
     ),
     response_model=ItineraryResponse,
     responses={
@@ -161,9 +158,9 @@ async def save_itinerary(
     "/itineraries",
     summary="Listar itinerarios guardados por el usuario",
     description=(
-        "Devuelve la lista paginada de itinerarios guardados por el usuario autenticado, ordenados "
-        "del más reciente al más antiguo (`created_at DESC`).\n\n"
-        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+        "Lista paginada, del más reciente al más antiguo. `page_size` admite como "
+        "máximo 50.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`."
     ),
     response_model=Page[ItineraryResponse],
     responses={
@@ -174,7 +171,7 @@ async def save_itinerary(
 async def list_itineraries(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     page: int = Query(default=1, description="Número de página (≥ 1)."),
-    page_size: int = Query(default=20, description="Tamaño de página (1 a 100)."),
+    page_size: int = Query(default=20, description="Tamaño de página (1 a 50)."),
 ) -> Page[ItineraryResponse]:
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -201,11 +198,9 @@ async def list_itineraries(
     "/itineraries/{itinerary_id}",
     summary="Obtener el detalle completo de un itinerario guardado",
     description=(
-        "Recupera un itinerario guardado por su UUID incluyendo el snapshot completo del "
-        "vuelo (`offer`), "
-        "tramos, aerolíneas, coordenadas de aeropuertos y `price_disclaimer`.\n\n"
-        "- 🔒 **Requiere autenticación del propietario (`404 ITINERARY_NOT_FOUND` si no "
-        "existe o pertenece a otro usuario).**"
+        "Devuelve el itinerario con la oferta congelada y su `price_disclaimer`.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- **Error:** `404 ITINERARY_NOT_FOUND` si no existe o es de otro usuario."
     ),
     response_model=ItineraryResponse,
     responses={
@@ -236,11 +231,9 @@ async def get_itinerary(
     "/itineraries/{itinerary_id}",
     summary="Eliminar un itinerario guardado",
     description=(
-        "Borra permanentemente un itinerario de la colección del usuario autenticado y "
-        "libera un espacio "
-        "dentro de su límite de 20 itinerarios.\n\n"
-        "- 🔒 **Requiere autenticación del propietario (`404 ITINERARY_NOT_FOUND` si no "
-        "existe o pertenece a otro usuario).**"
+        "Elimina el itinerario. Responde `204`.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- **Error:** `404 ITINERARY_NOT_FOUND` si no existe o es de otro usuario."
     ),
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
