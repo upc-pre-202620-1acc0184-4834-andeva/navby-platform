@@ -58,7 +58,7 @@ class RerankQuotesRequest(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "profile": "BUDGET",
+                "profile": "FAST",
             }
         },
     )
