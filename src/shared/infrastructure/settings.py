@@ -2,6 +2,16 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_JWT_SECRET = "change-me-local-only-32-bytes-minimum"
+REQUIRED_IN_PRODUCTION = (
+    "api_public_url",
+    "google_client_id",
+    "flight_api_key",
+    "mercadopago_access_token",
+    "mercadopago_webhook_secret",
+    "resend_api_key",
+)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -15,7 +25,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     postgres_port: int = 5432
 
-    jwt_secret: str = "change-me-local-only-32-bytes-minimum"
+    jwt_secret: str = DEFAULT_JWT_SECRET
     cookie_secure: bool = False
     trust_proxy_headers: bool = False
     terms_version: str = "2026-10"
@@ -31,7 +41,21 @@ class Settings(BaseSettings):
     mercadopago_webhook_secret: str = ""
 
     resend_api_key: str = ""
-    resend_from_email: str = "Navby <no-reply@navby.andeva.tech>"
+    resend_from_email: str = "Navby <no-reply@andeva.tech>"
+
+    def production_problems(self) -> list[str]:
+        # Solo nombres, nunca valores: el resultado termina en el log de arranque.
+        if self.app_env != "production":
+            return []
+        problems: list[str] = []
+        if self.jwt_secret == DEFAULT_JWT_SECRET or len(self.jwt_secret) < 32:
+            problems.append("JWT_SECRET")
+        if not self.cookie_secure:
+            problems.append("COOKIE_SECURE")
+        if not self.webapp_url.startswith("https://"):
+            problems.append("WEBAPP_URL")
+        problems.extend(name.upper() for name in REQUIRED_IN_PRODUCTION if not getattr(self, name))
+        return problems
 
 
 @lru_cache(maxsize=1)

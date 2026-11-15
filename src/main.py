@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
@@ -45,6 +46,7 @@ from src.shared.infrastructure.in_memory_event_bus import InMemoryEventBus
 from src.shared.infrastructure.outbox_relay import OutboxRelay
 from src.shared.infrastructure.periodic_tasks import PeriodicTasks
 from src.shared.infrastructure.redis_client import RedisClient, get_shared_redis
+from src.shared.infrastructure.settings import get_settings
 from src.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
 from src.shared.interfaces.http_errors import register_exception_handlers
 
@@ -81,6 +83,18 @@ def build_outbox_relay(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
+    # httpx registra cada URL en INFO y la clave de FlightAPI viaja dentro de la URL.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    problems = get_settings().production_problems()
+    if problems:
+        raise RuntimeError(
+            "Refusing to start in production; missing or unsafe settings: " + ", ".join(problems)
+        )
+
     graph = init_airport_graph()
     app.state.airport_graph = graph
 
