@@ -31,15 +31,11 @@ routing_router = APIRouter(prefix="/api/v1/routing", tags=["Routing"])
     "/cities",
     summary="Autocompletar ciudades y aeropuertos IATA",
     description=(
-        "Busca ciudades y aeropuertos en el grafo en memoria de OpenFlights (`3,354` "
-        "aeropuertos con código IATA).\n\n"
-        '- Soporta búsqueda insensible a mayúsculas y tildes (`"cusco"`, `"nueva york"`, '
-        '`"londres"`), '
-        "alias en español (`data/city_aliases_es.json`) y coincidencia directa por código "
-        'IATA (`"LIM"`, `"MAD"`).\n'
-        "- Agrupa aeropuertos metropolitanos bajo su ciudad principal y devuelve coordenadas "
-        "geográficas (`lat`, `lon`).\n"
-        "- **Gratuito (`RN-03`):** no requiere autenticación ni consume créditos."
+        "`q` necesita al menos 2 caracteres y coincide por prefijo con el nombre de la "
+        "ciudad (en inglés o su alias en español), el nombre del aeropuerto o el código "
+        "IATA. No distingue mayúsculas ni tildes. Devuelve cada ciudad con todos sus "
+        "aeropuertos (RN-06).\n\n"
+        "- Público y gratuito. `limit` admite como máximo 20."
     ),
     response_model=CitiesResponse,
     responses={422: {"model": ProblemDetails}},
@@ -67,18 +63,16 @@ async def get_cities(
     "/preview",
     summary="Previsualizar conectividad aérea y tiempo mínimo físico (BFS + A*)",
     description=(
-        "Verifica instantáneamente en el grafo en memoria si existe ruta aérea entre el "
-        "conjunto de orígenes "
-        "y destinos (`1` a `5` códigos IATA por lado, `RN-01`) antes de gastar créditos en "
-        "FlightAPI (`RN-05`).\n\n"
-        "- **Algoritmo 1 — BFS (*Breadth-First Search*):** halla el camino con el **menor "
-        "número de escalas** (`min_stops_path`).\n"
-        "- **Algoritmo 2 — A\\* (*A-Star* con heurística admisible Haversine a $900\\text{ "
-        "km/h}$):** halla el camino de "
-        "**tiempo mínimo físico** $T_{\\min}$ (`fastest_path`, incluyendo $45\\text{ min}$ por "
-        "escala interna y $35\\text{ min}$ fijos de rodaje/despegue).\n"
-        "- Ordena hasta los 4 mejores pares `(origin, destination)` candidatos para cotizar.\n"
-        "- **Gratuito (`RN-05`):** no consume créditos (rate limit: 30 req/min por IP)."
+        "Evalúa todas las combinaciones de `origins` y `destinations` (1 a 5 "
+        "aeropuertos por lado, sin aeropuertos en común) con **BFS** (¿hay ruta con 2 "
+        "escalas o menos?, RN-05) y **A\\*** (ruta físicamente más rápida: 800 km/h, +30 "
+        "min por tramo y +60 min por escala).\n\n"
+        "- `pairs`: los pares que se cotizarían, como máximo 2 (RN-14).\n"
+        "- `best_route`: la ruta de ida del par con menor T_min.\n"
+        "- Con `trip_type=ROUND_TRIP`, `t_min_minutes` suma ida y vuelta.\n"
+        "- Si ningún par tiene ruta: `200` con `reachable: false`.\n"
+        "- Público y gratuito. **Rate limit:** 30 por minuto por IP.\n"
+        "- **Errores:** `404 AIRPORT_NOT_FOUND`, `422 VALIDATION_ERROR`."
     ),
     response_model=RoutePreviewResponse,
     dependencies=[Depends(rate_limit("routing_preview", client_ip_key, 30))],

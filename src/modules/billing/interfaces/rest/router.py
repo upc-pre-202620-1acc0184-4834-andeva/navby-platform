@@ -143,12 +143,11 @@ def get_payment_gateway(
     "/billing/wallet",
     summary="Consultar billetera y saldo de créditos del usuario",
     description=(
-        "Devuelve el saldo actual de créditos del usuario (`free_credits` + `paid_credits`), "
-        "el número de búsquedas disponibles (`searches_available = total_credits // 2`) y la fecha "
-        "del próximo reinicio mensual de los **10 créditos gratuitos (`RN-14`)**.\n\n"
-        "- Si el periodo mensual venció, aplica automáticamente el *lazy monthly reset* con "
-        "bloqueo `SELECT ... FOR UPDATE`.\n"
-        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+        "Devuelve los créditos gratuitos, comprados y totales, las búsquedas "
+        "disponibles (`total_credits // 5`) y `free_credits_reset_at`: la próxima "
+        "medianoche de Lima en UTC. Los 10 créditos gratuitos se renuevan cada día y no "
+        "se acumulan.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`."
     ),
     response_model=WalletResponse,
     responses={
@@ -181,10 +180,10 @@ async def get_wallet(
     "/billing/transactions",
     summary="Listar historial paginado de movimientos de créditos",
     description=(
-        "Devuelve el libro mayor inmutable de transacciones (`INITIAL_GRANT`, "
-        "`MONTHLY_RESET`, `PURCHASE`, "
-        "`SEARCH_DEBIT`, `FORFEITED`) ordenado del movimiento más reciente al más antiguo.\n\n"
-        "- 🔒 **Requiere autenticación:** `Authorization: Bearer <access_token>`."
+        "Historial paginado de movimientos. `type` puede ser `SEARCH_DEBIT`, "
+        "`SEARCH_REFUND`, `PURCHASE`, `PURCHASE_REVERSAL` o `ACCOUNT_DELETION`. "
+        "`page_size` admite como máximo 50.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`."
     ),
     response_model=Page[TransactionItemResponse],
     responses={
@@ -196,7 +195,7 @@ async def list_transactions(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(get_uow)],
     page: Annotated[int, Query(description="Número de página (≥ 1).")] = 1,
-    page_size: Annotated[int, Query(description="Tamaño de página (1 a 100).")] = 20,
+    page_size: Annotated[int, Query(description="Tamaño de página (1 a 50).")] = 20,
 ) -> Page[TransactionItemResponse]:
     handler = ListTransactionsHandler(
         uow=uow,
@@ -234,14 +233,8 @@ async def list_transactions(
     "/billing/packages",
     summary="Listar catálogo oficial de paquetes de créditos (PEN)",
     description=(
-        "Devuelve los 3 paquetes de créditos comprables que no caducan (`RN-21`):\n\n"
-        "- **`pack_20` (Explorador):** 20 créditos (10 búsquedas) — `S/ 15.00 PEN` (`$3.99 "
-        "USD` ref.).\n"
-        "- **`pack_50` (Viajero):** 50 créditos (25 búsquedas) — `S/ 30.00 PEN` (`$7.99 USD` "
-        "ref.).\n"
-        "- **`pack_120` (Trotamundos):** 120 créditos (60 búsquedas) — `S/ 56.00 PEN` "
-        "(`$14.99 USD` ref.).\n\n"
-        "Público: no requiere autenticación."
+        "Catálogo público de paquetes de créditos. Los créditos comprados no caducan. "
+        "Se cobra siempre en soles (PEN); `usd_reference` es solo informativo."
     ),
     response_model=PackagesListResponse,
     responses={
@@ -271,10 +264,12 @@ async def list_packages() -> PackagesListResponse:
     "/billing/orders",
     summary="Crear orden de compra de créditos en Mercado Pago Checkout Pro",
     description=(
-        "Crea una orden `PENDING` con vigencia de 24 horas y genera una preferencia de pago en "
-        "**Mercado Pago Checkout Pro (Sandbox)** devolviendo el `checkout_url` para "
-        "redirigir al usuario.\n\n"
-        "- 🔒 **Requiere usuario verificado:** `Authorization: Bearer <access_token>`."
+        "Crea una orden `PENDING` y la preferencia de Mercado Pago Checkout Pro; "
+        "devuelve el `checkout_url`. Mercado Pago opera siempre en sandbox: no se cobra "
+        "dinero real (RL-04).\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>` de un usuario con correo "
+        "verificado.\n"
+        "- **Error:** `404 PACKAGE_NOT_FOUND`."
     ),
     response_model=OrderCreatedResponse,
     status_code=status.HTTP_201_CREATED,
@@ -322,11 +317,10 @@ async def create_order(
     "/billing/orders/{order_id}",
     summary="Consultar el estado de una orden de compra",
     description=(
-        "Permite a la WebApp consultar el estado actual de una orden (`PENDING`, `PAID`, "
-        "`FAILED`, `EXPIRED`) "
-        "cuando el usuario regresa desde la pasarela de Mercado Pago.\n\n"
-        "- 🔒 **Requiere autenticación del propietario de la orden (`404 ORDER_NOT_FOUND` si "
-        "pertenece a otro usuario).**"
+        "Devuelve la orden con su `status`: `PENDING`, `APPROVED`, `REJECTED`, "
+        "`EXPIRED` o `REVERSED`.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- **Error:** `404 ORDER_NOT_FOUND` si no existe o es de otro usuario."
     ),
     response_model=OrderDetailResponse,
     responses={
@@ -362,10 +356,11 @@ async def get_order(
     "/billing/webhooks/mercadopago",
     summary="Recibir notificación webhook de pago desde Mercado Pago",
     description=(
-        "Valida la firma HMAC-SHA256 del encabezado `X-Signature` (`ts=...,v1=...`), "
-        "consulta el estado autoritativo "
-        "del pago en Mercado Pago y acredita de forma **idempotente** los `paid_credits` en "
-        "PostgreSQL con bloqueo de fila."
+        "Lo llama Mercado Pago. Si `type` no es `payment`, responde `200` sin hacer "
+        "nada. Si no: valida la cabecera `x-signature` (y que `ts` no tenga más de 300 "
+        "s), consulta el pago en la API de Mercado Pago sin confiar en el cuerpo y "
+        "aplica el cambio de estado una sola vez.\n\n"
+        "- **Error:** `401 INVALID_WEBHOOK_SIGNATURE`."
     ),
     responses={
         401: {"model": ProblemDetails},
