@@ -277,9 +277,9 @@ Escenario: Agrupación metropolitana
   Entonces "New York" incluye JFK, LGA y EWR (por airport_city_overrides.csv)
   Y "Columbus" de Ohio y "Columbus" de Georgia aparecen como ciudades distintas
 
-Escenario: Validación
-  Cuando q tiene 1 carácter o limit > 20
-  Entonces responde 422 VALIDATION_ERROR
+Escenario: Validación y autenticación
+  Cuando se consulta sin JWT o con token inválido → 401 UNAUTHENTICATED
+  Cuando q tiene 1 carácter o limit > 20 → 422 VALIDATION_ERROR
 ```
 
 ### TS-13 · `GET /routing/preview`
@@ -302,7 +302,8 @@ Escenario: Ida y vuelta
   Cuando trip_type = ROUND_TRIP
   Entonces solo se consideran pares alcanzables en ambos sentidos y t_min_minutes suma ida y vuelta
 
-Escenario: Entradas inválidas
+Escenario: Entradas inválidas y autenticación
+  Cuando se consulta sin JWT o con token inválido → 401 UNAUTHENTICATED
   Cuando un IATA no existe → 404 AIRPORT_NOT_FOUND
   Cuando hay más de 5 aeropuertos por lado o un aeropuerto en ambos lados → 422 VALIDATION_ERROR
 ```
@@ -476,9 +477,9 @@ Escenario: Aislamiento
 Escenario: Catálogo
   Entonces responde 200 con currency = "PEN" y los 3 paquetes con price y usd_reference como texto con 2 decimales
 
-Escenario: Acceso público
-  Cuando se consulta sin JWT
-  Entonces responde 200
+Escenario: Acceso autenticado
+  Cuando se consulta sin JWT → responde 401 UNAUTHENTICATED
+  Cuando se consulta con JWT → responde 200 con currency = "PEN" y los paquetes
 ```
 
 ### TS-20 · `POST /billing/orders`

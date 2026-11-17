@@ -186,6 +186,7 @@ La VM solo expone los puertos 80, 443 y 22. El crédito de Azure de $100 USD alc
 | `FLIGHT_API_KEY` | Clave de FlightAPI. Si falta en `local`, se usa el adaptador mock. | Vacía (mock) | Clave del plan LITE |
 | `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` | Pagos y validación de webhooks. | Credenciales `TEST-` propias | Credenciales `TEST-` del proyecto (siempre sandbox, RL-04) |
 | `RESEND_API_KEY` | Correo. Si falta, el OTP se escribe en el log (solo `local`). | Vacía | Clave con dominio `andeva.tech` |
+| `TURNSTILE_SECRET_KEY` | Secret Key de Cloudflare Turnstile para verificar el captcha de register, login y forgot-password. Si falta, no se verifica (solo `local`). | Vacía, o la clave de prueba `1x0000000000000000000000000000000AA` | Secret Key del widget de `navby.andeva.tech` |
 | `RESEND_FROM_EMAIL` | Remitente de los correos. Su dominio debe estar verificado en Resend. | No aplica | `Navby <no-reply@andeva.tech>` (valor por defecto) |
 | `WEBAPP_URL` | Base de los enlaces de correo y de las `back_urls` de Mercado Pago. | `http://localhost:5173/app` | `https://navby.andeva.tech/app` |
 | `API_PUBLIC_URL` | URL directa de la VM, usada como `notification_url` del webhook. | Túnel opcional (`ngrok`) | `https://navby-api.<región>.cloudapp.azure.com` |
@@ -198,7 +199,8 @@ La VM solo expone los puertos 80, 443 y 22. El crédito de Azure de $100 USD alc
 - `JWT_SECRET` es el valor de ejemplo o tiene menos de 32 caracteres;
 - `COOKIE_SECURE` no es `true`;
 - `WEBAPP_URL` no empieza con `https://`;
-- falta `GOOGLE_CLIENT_ID`, `FLIGHT_API_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `RESEND_API_KEY` o `API_PUBLIC_URL`.
+- falta `GOOGLE_CLIENT_ID`, `FLIGHT_API_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY` o `API_PUBLIC_URL`;
+- `TURNSTILE_SECRET_KEY` es una clave de prueba de Cloudflare.
 
 El error de arranque nombra las variables, nunca sus valores. Así producción no puede servir vuelos del mock, perder correos ni firmar tokens con un secreto público.
 
