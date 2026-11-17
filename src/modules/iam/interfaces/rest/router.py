@@ -100,6 +100,7 @@ from src.shared.infrastructure.redis_client import get_redis_client
 from src.shared.infrastructure.settings import Settings, get_settings
 from src.shared.infrastructure.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
 from src.shared.interfaces.auth import get_current_user
+from src.shared.interfaces.captcha import require_captcha
 from src.shared.interfaces.http_errors import raise_for_error
 from src.shared.interfaces.problem_details import ProblemDetails
 from src.shared.interfaces.rate_limit import client_ip_key, rate_limit
@@ -180,13 +181,15 @@ def _clear_refresh_cookie(response: Response, settings: Settings) -> None:
         "y rechaza correos de dominios desechables (RN-17). La contraseña debe tener de "
         "8 a 72 caracteres con letras y números.\n\n"
         "- **Rate limit:** 5 por minuto por IP.\n"
-        "- **Errores:** `409 EMAIL_ALREADY_REGISTERED`, `422 TERMS_NOT_ACCEPTED`, `422 "
-        "DISPOSABLE_EMAIL`, `422 VALIDATION_ERROR`."
+        "- **Captcha:** token de Cloudflare Turnstile en la cabecera `X-Captcha-Response`.\n"
+        "- **Errores:** `400 CAPTCHA_INVALID`, `409 EMAIL_ALREADY_REGISTERED`, `422 "
+        "TERMS_NOT_ACCEPTED`, `422 DISPOSABLE_EMAIL`, `422 VALIDATION_ERROR`."
     ),
     response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit("register", client_ip_key, 5))],
+    dependencies=[Depends(rate_limit("register", client_ip_key, 5)), Depends(require_captcha)],
     responses={
+        400: {"model": ProblemDetails},
         409: {"model": ProblemDetails},
         422: {"model": ProblemDetails},
         429: {"model": ProblemDetails},
@@ -302,11 +305,14 @@ async def resend_verification(
         "- **Para probar en `/docs`:** ejecuta este endpoint con tu cuenta verificada, "
         "copia el `access_token` y pégalo en **Authorize**.\n"
         "- **Rate limit:** 10 por minuto por IP.\n"
-        "- **Errores:** `401 INVALID_CREDENTIALS`, `403 EMAIL_NOT_VERIFIED`."
+        "- **Captcha:** token de Cloudflare Turnstile en la cabecera `X-Captcha-Response`.\n"
+        "- **Errores:** `400 CAPTCHA_INVALID`, `401 INVALID_CREDENTIALS`, `403 "
+        "EMAIL_NOT_VERIFIED`."
     ),
     response_model=SessionResponse,
-    dependencies=[Depends(rate_limit("login", client_ip_key, 10))],
+    dependencies=[Depends(rate_limit("login", client_ip_key, 10)), Depends(require_captcha)],
     responses={
+        400: {"model": ProblemDetails},
         401: {"model": ProblemDetails},
         403: {"model": ProblemDetails},
         422: {"model": ProblemDetails},
@@ -451,11 +457,17 @@ async def logout(
     description=(
         "Envía un enlace `{WEBAPP_URL}/reset-password?token=...` válido por 30 minutos. "
         "Responde siempre `202` para no revelar si el correo existe.\n\n"
-        "- **Rate limit:** 3 por minuto por IP."
+        "- **Rate limit:** 3 por minuto por IP.\n"
+        "- **Captcha:** token de Cloudflare Turnstile en la cabecera `X-Captcha-Response`.\n"
+        "- **Errores:** `400 CAPTCHA_INVALID`."
     ),
     status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(rate_limit("forgot_password", client_ip_key, 3))],
+    dependencies=[
+        Depends(rate_limit("forgot_password", client_ip_key, 3)),
+        Depends(require_captcha),
+    ],
     responses={
+        400: {"model": ProblemDetails},
         422: {"model": ProblemDetails},
         429: {"model": ProblemDetails},
     },
