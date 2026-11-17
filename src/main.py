@@ -289,7 +289,7 @@ OPENAPI_TAGS = [
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Navby Platform API",
-        version="0.14.0",
+        version="0.15.0",
         description=OPENAPI_DESCRIPTION,
         openapi_tags=OPENAPI_TAGS,
         contact={
