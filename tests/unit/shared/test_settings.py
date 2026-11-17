@@ -13,6 +13,7 @@ VALID_PRODUCTION: dict[str, Any] = {
     "mercadopago_access_token": "TEST-token",
     "mercadopago_webhook_secret": "webhook-secret",
     "resend_api_key": "re_key",
+    "turnstile_secret_key": "0x-turnstile-secret",
 }
 
 UNSAFE_VALUES: dict[str, Any] = {
@@ -25,6 +26,7 @@ UNSAFE_VALUES: dict[str, Any] = {
     "mercadopago_access_token": "",
     "mercadopago_webhook_secret": "",
     "resend_api_key": "",
+    "turnstile_secret_key": "",
 }
 
 
@@ -50,3 +52,12 @@ def test_production_rejects_short_jwt_secret() -> None:
 
 def test_local_never_reports_problems() -> None:
     assert _settings(**{**UNSAFE_VALUES, "app_env": "local"}).production_problems() == []
+
+
+def test_production_rejects_turnstile_test_secret() -> None:
+    test_secret = "1x0000000000000000000000000000000AA"
+    problems = _settings(
+        **{**VALID_PRODUCTION, "turnstile_secret_key": test_secret}
+    ).production_problems()
+
+    assert problems == ["TURNSTILE_SECRET_KEY"]
