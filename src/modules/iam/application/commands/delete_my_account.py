@@ -10,6 +10,9 @@ from src.shared.application.application_error import ApplicationError
 from src.shared.application.result import Result
 from src.shared.application.unit_of_work import UnitOfWork
 
+# La webapp pide la palabra del idioma activo: "ELIMINAR" (es) o "DELETE" (en).
+DELETE_CONFIRMATIONS = frozenset({"ELIMINAR", "DELETE"})
+
 
 @dataclass(frozen=True, slots=True)
 class DeleteMyAccountCommand:
@@ -29,14 +32,14 @@ class DeleteMyAccountHandler:
         self._refresh_repo = refresh_repo
 
     async def handle(self, cmd: DeleteMyAccountCommand) -> Result[None]:
-        if cmd.confirmation != "ELIMINAR":
+        if cmd.confirmation not in DELETE_CONFIRMATIONS:
             return Result.failure(
                 ApplicationError(
                     code="VALIDATION_ERROR",
-                    message='La confirmación debe ser exactamente "ELIMINAR".',
+                    message='La confirmación debe ser exactamente "ELIMINAR" o "DELETE".',
                     details={
                         "invalid_params": [
-                            {"name": "confirmation", "reason": "must equal ELIMINAR"}
+                            {"name": "confirmation", "reason": "must equal ELIMINAR or DELETE"}
                         ]
                     },
                 )

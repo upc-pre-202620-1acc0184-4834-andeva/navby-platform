@@ -557,7 +557,8 @@ async def get_my_profile(
     "/users/me",
     summary="Eliminar cuenta propia de forma permanente",
     description=(
-        'Exige `{"confirmation": "ELIMINAR"}`. Anonimiza nombre y correo, borra '
+        'Exige `{"confirmation": "ELIMINAR"}` (o `"DELETE"` en inglés). '
+        "Anonimiza nombre y correo, borra "
         "sesiones e itinerarios y anula los créditos; conserva las órdenes de compra "
         "por obligación tributaria (RL-02). Borra la cookie.\n\n"
         "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
