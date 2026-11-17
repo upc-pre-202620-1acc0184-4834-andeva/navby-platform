@@ -111,7 +111,7 @@ Sin cuerpo. Revoca el refresh token de la cookie y la borra. `204` siempre.
 
 ### `DELETE /users/me`
 
-`{ "confirmation": "ELIMINAR" }` → `204` y la cookie se borra. Anonimiza la cuenta, borra los itinerarios y anula los créditos; conserva las órdenes de compra. Error: `422 VALIDATION_ERROR` si la confirmación no es exacta.
+`{ "confirmation": "ELIMINAR" }` (o `"DELETE"`, la palabra que pide la webapp en inglés) → `204` y la cookie se borra. Anonimiza la cuenta, borra los itinerarios y anula los créditos; conserva las órdenes de compra. Error: `422 VALIDATION_ERROR` si la confirmación no es exacta.
 
 ## 3. Routing
 
