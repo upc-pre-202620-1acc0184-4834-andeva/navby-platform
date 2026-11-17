@@ -10,6 +10,11 @@ REQUIRED_IN_PRODUCTION = (
     "mercadopago_access_token",
     "mercadopago_webhook_secret",
     "resend_api_key",
+    "turnstile_secret_key",
+)
+# Claves de prueba de Cloudflare Turnstile: aceptan o rechazan cualquier token.
+TURNSTILE_TEST_SECRETS = frozenset(
+    f"{prefix}x0000000000000000000000000000000AA" for prefix in ("1", "2", "3")
 )
 
 
@@ -43,6 +48,8 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     resend_from_email: str = "Navby <no-reply@andeva.tech>"
 
+    turnstile_secret_key: str = ""
+
     def production_problems(self) -> list[str]:
         # Solo nombres, nunca valores: el resultado termina en el log de arranque.
         if self.app_env != "production":
@@ -55,6 +62,8 @@ class Settings(BaseSettings):
         if not self.webapp_url.startswith("https://"):
             problems.append("WEBAPP_URL")
         problems.extend(name.upper() for name in REQUIRED_IN_PRODUCTION if not getattr(self, name))
+        if self.turnstile_secret_key in TURNSTILE_TEST_SECRETS:
+            problems.append("TURNSTILE_SECRET_KEY")
         return problems
 
 

@@ -84,6 +84,7 @@ El router convierte un `Result` fallido en una respuesta RFC 7807 usando el cat�
 | `OTP_ATTEMPTS_EXCEEDED` | 429 | IAM | 5 intentos fallidos. Hay que pedir un código nuevo. |
 | `INVALID_RESET_TOKEN` | 400 | IAM | Token de recuperación inválido, usado o expirado. |
 | `INVALID_REFRESH_TOKEN` | 401 | IAM | Refresh token inválido, expirado o reutilizado. |
+| `CAPTCHA_INVALID` | 400 | IAM | Falta el token de Cloudflare Turnstile o Cloudflare lo rechazó (register, login, forgot-password). |
 | `INVALID_GOOGLE_TOKEN` | 401 | IAM | `id_token` de Google inválido. |
 | `AIRPORT_NOT_FOUND` | 404 | Routing | Código IATA inexistente en el grafo. |
 | `ROUTE_NOT_REACHABLE` | 422 | Quotes | Ningún par tiene ruta con ≤ 2 escalas (RN-07). En `/routing/preview` no es error: responde `200` con `reachable: false`. |

@@ -78,7 +78,7 @@ def test_current_user_immutable() -> None:
     assert user.email_verified is True
 
 
-def test_error_catalog_has_all_27_codes() -> None:
+def test_error_catalog_has_all_28_codes() -> None:
     expected_codes = {
         "VALIDATION_ERROR",
         "RATE_LIMITED",
@@ -107,9 +107,10 @@ def test_error_catalog_has_all_27_codes() -> None:
         "PACKAGE_NOT_FOUND",
         "ORDER_NOT_FOUND",
         "INVALID_WEBHOOK_SIGNATURE",
+        "CAPTCHA_INVALID",
     }
     assert set(ERROR_CATALOG.keys()) == expected_codes
-    assert len(ERROR_CATALOG) == 27
+    assert len(ERROR_CATALOG) == 28
 
 
 async def test_in_memory_event_bus_publishes_to_subscribers() -> None:

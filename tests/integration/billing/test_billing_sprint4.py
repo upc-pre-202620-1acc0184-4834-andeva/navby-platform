@@ -134,8 +134,17 @@ async def test_ts18_ts19_packages_and_transactions_pagination(
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # TS-19 Public packages endpoint without JWT
-        r_pkg = await client.get("/api/v1/billing/packages")
+        # TS-19 Packages endpoint requires JWT
+        r_pkg_unauth = await client.get("/api/v1/billing/packages")
+        assert r_pkg_unauth.status_code == 401
+        assert r_pkg_unauth.json()["code"] == "UNAUTHENTICATED"
+
+        # TS-18 Transactions pagination & isolation
+        user_1, token_1 = await _register_and_verify(client, sender, "u1@mail.com")
+        user_2, _ = await _register_and_verify(client, sender, "u2@mail.com")
+        headers_1 = {"Authorization": f"Bearer {token_1}"}
+
+        r_pkg = await client.get("/api/v1/billing/packages", headers=headers_1)
         assert r_pkg.status_code == 200
         pkg_data = r_pkg.json()
         assert pkg_data["currency"] == "PEN"
@@ -144,11 +153,6 @@ async def test_ts18_ts19_packages_and_transactions_pagination(
         assert codes == ["pack_50", "pack_100", "pack_250"]
         assert pkg_data["packages"][1]["price"] == "16.90"
         assert pkg_data["packages"][1]["usd_reference"] == "4.49"
-
-        # TS-18 Transactions pagination & isolation
-        user_1, token_1 = await _register_and_verify(client, sender, "u1@mail.com")
-        user_2, _ = await _register_and_verify(client, sender, "u2@mail.com")
-        headers_1 = {"Authorization": f"Bearer {token_1}"}
 
         session_factory = get_session_factory()
         base_time = datetime.now(UTC) - timedelta(hours=2)

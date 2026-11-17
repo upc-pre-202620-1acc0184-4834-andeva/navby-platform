@@ -20,9 +20,10 @@ from src.modules.routing.interfaces.rest.schemas import (
     CitiesResponse,
     RoutePreviewResponse,
 )
+from src.shared.interfaces.auth import get_current_user
 from src.shared.interfaces.http_errors import to_http
 from src.shared.interfaces.problem_details import ProblemDetails
-from src.shared.interfaces.rate_limit import client_ip_key, rate_limit
+from src.shared.interfaces.rate_limit import rate_limit, user_id_key
 
 routing_router = APIRouter(prefix="/api/v1/routing", tags=["Routing"])
 
@@ -35,10 +36,15 @@ routing_router = APIRouter(prefix="/api/v1/routing", tags=["Routing"])
         "ciudad (en inglés o su alias en español), el nombre del aeropuerto o el código "
         "IATA. No distingue mayúsculas ni tildes. Devuelve cada ciudad con todos sus "
         "aeropuertos (RN-06).\n\n"
-        "- Público y gratuito. `limit` admite como máximo 20."
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- `limit` admite como máximo 20."
     ),
     response_model=CitiesResponse,
-    responses={422: {"model": ProblemDetails}},
+    dependencies=[Depends(get_current_user)],
+    responses={
+        401: {"model": ProblemDetails},
+        422: {"model": ProblemDetails},
+    },
 )
 async def get_cities(
     request: Request,
@@ -71,12 +77,18 @@ async def get_cities(
         "- `best_route`: la ruta de ida del par con menor T_min.\n"
         "- Con `trip_type=ROUND_TRIP`, `t_min_minutes` suma ida y vuelta.\n"
         "- Si ningún par tiene ruta: `200` con `reachable: false`.\n"
-        "- Público y gratuito. **Rate limit:** 30 por minuto por IP.\n"
-        "- **Errores:** `404 AIRPORT_NOT_FOUND`, `422 VALIDATION_ERROR`."
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`. **Rate limit:** 30 por "
+        "minuto por usuario.\n"
+        "- **Errores:** `401 UNAUTHENTICATED`, `404 AIRPORT_NOT_FOUND`, "
+        "`422 VALIDATION_ERROR`."
     ),
     response_model=RoutePreviewResponse,
-    dependencies=[Depends(rate_limit("routing_preview", client_ip_key, 30))],
+    dependencies=[
+        Depends(get_current_user),
+        Depends(rate_limit("routing_preview", user_id_key, 30)),
+    ],
     responses={
+        401: {"model": ProblemDetails},
         404: {"model": ProblemDetails},
         422: {"model": ProblemDetails},
         429: {"model": ProblemDetails},

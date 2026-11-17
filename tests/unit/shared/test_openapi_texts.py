@@ -17,6 +17,8 @@ FORBIDDEN = [
     "pack_120",
     "SEARCH_SESSION_EXPIRED",
     "15 min (",
+    "Público y gratuito",
+    "Catálogo público",
 ]
 
 

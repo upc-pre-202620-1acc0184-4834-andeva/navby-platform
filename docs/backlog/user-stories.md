@@ -12,9 +12,9 @@
 | EP04 · Itinerarios guardados | US-22 a US-24 |
 | EP05 · Créditos y pagos | US-25 a US-30 |
 | EP06 · Protección al consumidor | US-31 |
-| EP07 · Sitio público | US-32 y US-33 |
+| EP07 · Sitio informativo (website) | US-32 y US-33 |
 
-**Actores:** *visitante* (sin cuenta), *viajero* (con cuenta y correo verificado).
+**Actores:** *visitante* (persona que accede al portal informativo o se registra en `/register`), *viajero* (usuario autenticado con cuenta y correo verificado).
 
 ---
 
@@ -277,37 +277,37 @@ Escenario: Volver a registrarse
 
 ### US-11 · Encontrar mi ciudad al escribirla
 
-**Como** visitante **quiero** encontrar ciudades escribiendo su nombre en español o en inglés **para** elegir el origen y el destino sin conocer códigos de aeropuerto.
+**Como** viajero **quiero** encontrar ciudades escribiendo su nombre en español o en inglés **para** elegir el origen y el destino sin conocer códigos de aeropuerto.
 
-Reglas: RN-06 · Técnica: TS-12
+Reglas: RN-06, RN-12 · Técnica: TS-12
 
 ```gherkin
 Escenario: Nombre en español
-  Cuando el visitante escribe "Tok"
+  Cuando el viajero escribe "Tok"
   Entonces entre las sugerencias aparece "Tokio, Japón"
 
 Escenario: Nombre en inglés o código
-  Cuando el visitante escribe "Lond" o "LHR"
+  Cuando el viajero escribe "Lond" o "LHR"
   Entonces entre las sugerencias aparece "Londres, Reino Unido"
 
 Escenario: Sin tildes ni mayúsculas
-  Cuando el visitante escribe "bogota"
+  Cuando el viajero escribe "bogota"
   Entonces entre las sugerencias aparece "Bogotá, Colombia"
 
 Escenario: Texto demasiado corto
-  Cuando el visitante escribe una sola letra
+  Cuando el viajero escribe una sola letra
   Entonces no se muestran sugerencias todavía
 ```
 
 ### US-12 · Ver la ruta posible antes de las tarifas
 
-**Como** visitante **quiero** ver de inmediato si existe una ruta entre dos ciudades y por dónde pasaría **para** no esperar en vano si el viaje no es posible.
+**Como** viajero **quiero** ver de inmediato si existe una ruta entre dos ciudades y por dónde pasaría **para** no esperar en vano si el viaje no es posible.
 
 Reglas: RN-05, RN-07, RN-12 · Técnica: TS-13
 
 ```gherkin
 Escenario: Ruta posible
-  Dado que el visitante eligió Lima como origen y Tokio como destino
+  Dado que el viajero eligió Lima como origen y Tokio como destino
   Cuando inicia la búsqueda
   Entonces ve en segundos una ruta preliminar con las ciudades donde haría escala
   Y el tiempo mínimo estimado del viaje
@@ -318,11 +318,10 @@ Escenario: Ruta imposible
   Entonces se le informa que no hay rutas posibles
   Y no se le cobra ningún crédito
 
-Escenario: Sin cuenta
-  Dado que el visitante no inició sesión
-  Cuando inicia la búsqueda
-  Entonces igual ve la ruta preliminar
-  Y se le pide iniciar sesión para ver las tarifas
+Escenario: Sin sesión
+  Dado que una persona no inició sesión
+  Cuando intenta acceder al buscador o consultar la ruta preliminar
+  Entonces es redirigida a iniciar sesión
 ```
 
 ### US-13 · Recibir las 3 mejores recomendaciones
@@ -717,18 +716,18 @@ Escenario: Búsqueda reembolsada
 
 ### US-28 · Ver los paquetes de créditos
 
-**Como** visitante **quiero** conocer los paquetes y sus precios **para** decidir si me conviene comprar.
+**Como** viajero **quiero** conocer los paquetes y sus precios **para** decidir si me conviene comprar.
 
 Reglas: sección 7 · Técnica: TS-19
 
 ```gherkin
 Escenario: Catálogo
-  Cuando el visitante consulta los paquetes
+  Cuando el viajero consulta los paquetes
   Entonces ve Escapada (50 créditos, S/ 9.90), Viajero Frecuente (100, S/ 16.90) y Nómada (250, S/ 34.90)
   Y cuántas búsquedas equivale cada uno
 
 Escenario: Referencia en dólares
-  Cuando el visitante consulta los paquetes
+  Cuando el viajero consulta los paquetes
   Entonces ve el equivalente aproximado en USD
   Y se le aclara que el cobro se hace en soles
 ```
@@ -805,11 +804,11 @@ Escenario: Aviso en itinerarios guardados
 
 ---
 
-## EP07 · Sitio público
+## EP07 · Sitio informativo (website)
 
 ### US-32 · Entender qué hace Navby
 
-**Como** visitante **quiero** entender en pocos segundos qué hace Navby **para** decidir si lo pruebo.
+**Como** visitante **quiero** entender en pocos segundos qué hace Navby **para** decidir si me registro.
 
 Técnica: website (repositorio propio, fuera de este backlog)
 
@@ -817,7 +816,7 @@ Técnica: website (repositorio propio, fuera de este backlog)
 Escenario: Propuesta de valor
   Cuando el visitante entra al sitio
   Entonces entiende que Navby recomienda 3 vuelos combinando precio, duración y escalas
-  Y puede ir directamente a buscar vuelos
+  Y puede ir a crear su cuenta o iniciar sesión para buscar vuelos
 
 Escenario: Idioma
   Dado que el navegador del visitante está en inglés

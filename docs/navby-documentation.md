@@ -42,7 +42,7 @@ Navby evalúa las tres dimensiones a la vez y entrega solo las tres opciones con
 ## 4. Flujo de una búsqueda
 
 ```text
-Usuario ──► Webapp ──┬──► GET  /routing/preview   (gratis, público)
+Viajero autenticado ──► Webapp ──┬──► GET  /routing/preview   (JWT, sin consumo de créditos)
                      │      BFS: ¿hay ruta con ≤ 2 escalas?  → mínimo de escalas
                      │      A*:  ruta física más rápida      → T_min + ruta preliminar en el mapa
                      │
@@ -147,7 +147,7 @@ Criterios por oferta: **precio total** (todos los pasajeros), **duración total*
 | **RN-09** | Los créditos se debitan **antes** de llamar a FlightAPI y se **reembolsan** si todas las llamadas fallan o si FlightAPI no devuelve ningún vuelo. Si falla solo un par, se responde con lo obtenido (`partial: true`) y no hay reembolso. |
 | **RN-10** | Caché de ofertas por par: 30 min. La sesión de búsqueda dura 30 min desde su creación; reordenarla no extiende ese plazo. |
 | **RN-11** | Reordenar con otro perfil es gratis y solo funciona sobre una búsqueda vigente del mismo usuario. |
-| **RN-12** | Cotizar exige usuario autenticado con correo verificado. La vista previa de ruta es pública. |
+| **RN-12** | Toda la webapp operativa y las rutas de negocio (`routing`, `quotes`, `billing` salvo webhook, `itineraries`) exigen usuario autenticado con JWT; cotizar y comprar créditos exigen además correo verificado. |
 | **RN-13** | Guardar un itinerario es gratis. Máximo 50 itinerarios guardados por usuario. |
 | **RN-14** | **Selección de pares**: se evalúan con BFS y A\* todas las combinaciones origen–destino y se cotizan como máximo las **2 mejores**. Orden: menos escalas mínimas, luego más rutas directas sumadas de ambos aeropuertos (indica oferta comercial real) y luego menor T_min. El usuario no tiene que elegir aeropuertos. |
 | **RN-15** | Un usuario solo puede tener **una cotización en curso**. Una segunda petición mientras la primera no termina se rechaza con `SEARCH_IN_PROGRESS` y no se cobra. |

@@ -1,12 +1,55 @@
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+import jwt
 from httpx import ASGITransport, AsyncClient
 
 from src.main import create_app
+from src.shared.infrastructure.settings import get_settings
+
+
+def _auth_headers() -> dict[str, str]:
+    settings = get_settings()
+    now = datetime.now(UTC)
+    token = jwt.encode(
+        {
+            "sub": str(uuid4()),
+            "email": "traveler@mail.com",
+            "ev": True,
+            "exp": now + timedelta(minutes=15),
+        },
+        settings.jwt_secret,
+        algorithm="HS256",
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def test_ts12_ts13_routing_requires_authentication() -> None:
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        for path, params in (
+            ("/api/v1/routing/cities", {"q": "tok"}),
+            ("/api/v1/routing/preview", {"origins": "LIM", "destinations": "MAD"}),
+        ):
+            r_missing = await client.get(path, params=params)
+            assert r_missing.status_code == 401
+            assert r_missing.json()["code"] == "UNAUTHENTICATED"
+
+            r_invalid = await client.get(
+                path,
+                params=params,
+                headers={"Authorization": "Bearer invalid-jwt"},
+            )
+            assert r_invalid.status_code == 401
+            assert r_invalid.json()["code"] == "UNAUTHENTICATED"
 
 
 async def test_ts12_routing_cities_search_alias_name_iata_and_normalization() -> None:
     app = create_app()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    headers = _auth_headers()
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as client:
         for query in ("tok", "TOKYO", "hnd"):
             resp = await client.get("/api/v1/routing/cities", params={"q": query})
             assert resp.status_code == 200
@@ -37,7 +80,8 @@ async def test_ts12_routing_cities_search_alias_name_iata_and_normalization() ->
 async def test_ts12_routing_cities_metropolitan_grouping_and_validation() -> None:
     app = create_app()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    headers = _auth_headers()
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as client:
         r_ny = await client.get("/api/v1/routing/cities", params={"q": "New York"})
         assert r_ny.status_code == 200
         ny = next(
@@ -64,7 +108,8 @@ async def test_ts12_routing_cities_metropolitan_grouping_and_validation() -> Non
 async def test_ts13_routing_preview_reachable_and_round_trip() -> None:
     app = create_app()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    headers = _auth_headers()
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as client:
         r1 = await client.get(
             "/api/v1/routing/preview",
             params={"origins": "LIM", "destinations": "HND,NRT", "trip_type": "ONE_WAY"},
@@ -94,7 +139,8 @@ async def test_ts13_routing_preview_reachable_and_round_trip() -> None:
 async def test_ts13_routing_preview_unreachable_and_invalid_inputs() -> None:
     app = create_app()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    headers = _auth_headers()
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as client:
         r_unreach = await client.get(
             "/api/v1/routing/preview",
             params={"origins": "IPC", "destinations": "FNJ"},

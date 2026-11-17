@@ -8,9 +8,9 @@ Todas las rutas cuelgan de `https://navby.andeva.tech/app` (Vite con `base: "/ap
 
 | Ruta | Pantalla | Acceso |
 | :--- | :--- | :---: |
-| `/` | Buscador + mapa + panel lateral con el podio | Público (cotizar exige sesión) |
-| `/login`, `/register`, `/verify-email` | Autenticación (correo y contraseña, o botón de Google). El registro tiene la casilla obligatoria «Acepto los Términos y la Política de Privacidad» (RL-01). | Público |
-| `/forgot-password`, `/reset-password?token=` | Recuperación de contraseña | Público |
+| `/` | Buscador + mapa + panel lateral con el podio | Sesión |
+| `/login`, `/register`, `/verify-email` | Autenticación (correo y contraseña, o botón de Google). El registro tiene la casilla obligatoria «Acepto los Términos y la Política de Privacidad» (RL-01). | Acceso (sin sesión) |
+| `/forgot-password`, `/reset-password?token=` | Recuperación de contraseña | Acceso (sin sesión) |
 | `/itineraries`, `/itineraries/:id` | Itinerarios guardados | Sesión |
 | `/billing` | Saldo, historial y compra de paquetes. Precios en soles; el equivalente en USD aparece solo como referencia. | Sesión |
 | `/billing/result` | Retorno desde Mercado Pago (consulta el estado de la orden; si sigue `PENDING`, reintenta cada 3 s durante 1 min) | Sesión |
