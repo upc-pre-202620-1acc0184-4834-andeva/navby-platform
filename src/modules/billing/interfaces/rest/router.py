@@ -233,11 +233,14 @@ async def list_transactions(
     "/billing/packages",
     summary="Listar catálogo oficial de paquetes de créditos (PEN)",
     description=(
-        "Catálogo público de paquetes de créditos. Los créditos comprados no caducan. "
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n\n"
+        "Catálogo de paquetes de créditos. Los créditos comprados no caducan. "
         "Se cobra siempre en soles (PEN); `usd_reference` es solo informativo."
     ),
     response_model=PackagesListResponse,
+    dependencies=[Depends(get_current_user)],
     responses={
+        401: {"model": ProblemDetails},
         500: {"model": ProblemDetails},
     },
 )
