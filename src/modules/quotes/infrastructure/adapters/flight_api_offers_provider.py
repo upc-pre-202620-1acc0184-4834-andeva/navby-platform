@@ -150,7 +150,7 @@ class FlightApiOffersProvider(FlightOffersProvider):
                     )
 
                 try:
-                    data: dict[str, Any] = resp.json()
+                    raw_payload: Any = resp.json()
                 except Exception:
                     return Result.failure(
                         ApplicationError(
@@ -159,7 +159,30 @@ class FlightApiOffersProvider(FlightOffersProvider):
                         )
                     )
 
+                if not isinstance(raw_payload, dict):
+                    logger.error(
+                        "FlightAPI returned unexpected JSON type %s for %s->%s",
+                        type(raw_payload).__name__,
+                        pair.origin,
+                        pair.destination,
+                    )
+                    return Result.failure(
+                        ApplicationError(
+                            code="PROVIDER_UNAVAILABLE",
+                            message="Respuesta inválida de FlightAPI.",
+                        )
+                    )
+
+                data: dict[str, Any] = raw_payload
                 offers = translate_flightapi_payload(data, criteria)
+                raw_itineraries = data.get("itineraries")
+                if isinstance(raw_itineraries, list) and raw_itineraries and not offers:
+                    logger.warning(
+                        "FlightAPI returned %d itineraries for %s->%s, 0 valid after translation",
+                        len(raw_itineraries),
+                        pair.origin,
+                        pair.destination,
+                    )
                 return Result.success(offers)
 
         return Result.failure(

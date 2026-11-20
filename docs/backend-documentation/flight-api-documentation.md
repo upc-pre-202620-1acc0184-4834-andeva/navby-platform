@@ -30,21 +30,26 @@ FlightAPI devuelve colecciones normalizadas que se referencian por ID:
 ```json
 {
   "itineraries": [
-    { "id": "itn_1", "leg_ids": ["leg_out", "leg_in"],
+    { "id": "12126-2611010830--32317-0-15130-2611011445",
+      "leg_ids": ["leg_out", "leg_in"],
       "pricing_options": [
         { "price": { "amount": 420.50 },
-          "items": [ { "agent_id": "agent_latam", "deep_link": "https://..." } ] } ] }
+          "items": [ { "agent_id": "latm", "url": "/transport_deeplink/4.0/..." } ] } ] }
   ],
   "legs": [
     { "id": "leg_out", "departure": "2026-11-01T08:30:00", "arrival": "2026-11-01T14:45:00",
-      "duration_in_minutes": 375, "stop_count": 0, "segment_ids": ["seg_1"] }
+      "duration": 375, "stop_count": 0, "segment_ids": ["seg_1"] }
   ],
   "segments": [
     { "id": "seg_1", "departure": "2026-11-01T08:30:00", "arrival": "2026-11-01T14:45:00",
-      "origin_station_code": "LIM", "destination_station_code": "MIA",
-      "marketing_flight_number": "LA2510", "marketing_carrier_id": "carrier_la" }
+      "origin_place_id": 12126, "destination_place_id": 15130,
+      "duration": 375, "marketing_flight_number": "2510", "marketing_carrier_id": -32317 }
   ],
-  "carriers": [ { "id": "carrier_la", "name": "LATAM Airlines", "iata": "LA", "logo": "https://..." } ]
+  "places": [
+    { "id": 12126, "display_code": "LIM", "name": "Jorge Chávez" },
+    { "id": 15130, "display_code": "MIA", "name": "Miami Intl" }
+  ],
+  "carriers": [ { "id": -32317, "name": "LATAM Airlines", "display_code": "LA" } ]
 }
 ```
 
@@ -56,11 +61,11 @@ El adaptador convierte cada elemento de `itineraries[]` en un **FlightOffer** de
 | :--- | :--- |
 | `offer_id` | Calculado, no copiado: los primeros 16 caracteres hexadecimales del SHA-256 de la secuencia de segmentos (`número de vuelo` + `salida`) y la cabina. La misma oferta tiene el mismo ID en búsquedas distintas, lo que permite deduplicar entre pares y guardar itinerarios sin duplicados. |
 | `price` | El menor `pricing_options[].price.amount` (total de todos los pasajeros). |
-| `deep_link` | `items[0].deep_link` de esa misma opción de precio. |
+| `deep_link` | `items[0].url` de esa misma opción de precio (si llega como ruta relativa `/transport_deeplink/...`, se completa con `https://www.skyscanner.com`). |
 | `legs` | `leg_ids` → `legs[]` (ida y, si aplica, vuelta). |
-| `duration_minutes` | Suma de `legs[].duration_in_minutes`. |
+| `duration_minutes` | Suma de `legs[].duration` (o `duration_in_minutes` como respaldo). |
 | `stops` | Suma de `legs[].stop_count`. |
-| `segments` | `legs[].segment_ids` → `segments[]`: origen, destino, horas, número de vuelo y aerolínea. |
+| `segments` | `legs[].segment_ids` → `segments[]`: origen y destino resueltos desde `places[]` (`origin_place_id` / `destination_place_id`), horas, número de vuelo y aerolínea. |
 | `airlines` | `carriers[]` (nombre, IATA y logo) referenciados por los segmentos. |
 
 Se descartan los itinerarios sin opciones de precio, sin *deep link* o con algún tramo con más de 2 escalas (RN-05). Ningún tipo de FlightAPI cruza la frontera del adaptador.
