@@ -16,6 +16,8 @@
 | IAM | `POST /auth/forgot-password` | Sin sesión | Enviar el enlace de recuperación. |
 | IAM | `POST /auth/reset-password` | Sin sesión | Definir una contraseña nueva. |
 | IAM | `GET /users/me` | JWT | Consultar el perfil propio. |
+| IAM | `PUT /users/me/password` | JWT | Crear (cuenta solo-Google) o cambiar la contraseña. |
+| IAM | `DELETE /users/me/google` | JWT | Desvincular Google (exige tener contraseña). |
 | IAM | `DELETE /users/me` | JWT | Eliminar la cuenta (RL-02). |
 | Routing | `GET /routing/cities?q=` | JWT | Autocompletar ciudades y sus aeropuertos. |
 | Routing | `GET /routing/preview` | JWT | Obtener BFS + A\*: alcanzabilidad, escalas mínimas, T_min y ruta preliminar. |
@@ -108,6 +110,14 @@ Sin cuerpo. Revoca el refresh token de la cookie y la borra. `204` siempre.
 ### `GET /users/me`
 
 `200` → `{ "user_id", "email", "full_name", "email_verified", "has_password", "has_google", "created_at" }`
+
+### `PUT /users/me/password`
+
+`{ "new_password": "...", "current_password": "..." }` → `204`. En una cuenta solo-Google **crea** la contraseña y `current_password` se omite. Si la cuenta ya tiene contraseña, `current_password` es obligatoria. La nueva sigue la regla de registro (8 a 72 caracteres, letras y números). **Cierra las demás sesiones**: revoca todos los refresh tokens y responde con una cookie `navby_refresh` nueva para el dispositivo que hizo el cambio; los otros dispositivos pierden el acceso al vencer su access token (15 min). Rate limit: 5 por minuto por usuario. Errores: `400 INVALID_CURRENT_PASSWORD` y `422 VALIDATION_ERROR` (también si falta `current_password`).
+
+### `DELETE /users/me/google`
+
+`204`. Quita el acceso con Google. Solo se permite con contraseña: sin ella responde `409 PASSWORD_REQUIRED`. Es idempotente (sin Google vinculado también responde `204`). Si la persona vuelve a entrar con Google con el mismo correo, la cuenta se vincula otra vez.
 
 ### `DELETE /users/me`
 

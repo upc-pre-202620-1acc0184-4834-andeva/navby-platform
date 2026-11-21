@@ -90,6 +90,8 @@ Invariantes:
 | **Logout** | refresh_token (cookie) | — | — (idempotente) |
 | **RequestPasswordReset** | email | — (siempre éxito) | — |
 | **ResetPassword** | token, new_password | — | `INVALID_RESET_TOKEN`, `VALIDATION_ERROR` |
+| **SetPassword** | user_id, new_password, current_password? | Refresh token nuevo (cookie). Revoca todas las sesiones. | `VALIDATION_ERROR`, `INVALID_CURRENT_PASSWORD` |
+| **UnlinkGoogle** | user_id | — | `PASSWORD_REQUIRED` |
 | **GetMyProfile** (query) | user_id | perfil | — |
 | **DeleteMyAccount** | user_id, confirmation | — | `VALIDATION_ERROR` (la confirmación debe ser `"ELIMINAR"` o `"DELETE"`) |
 | **PurgeExpiredTokens** (tarea diaria) | — | filas borradas | — |
