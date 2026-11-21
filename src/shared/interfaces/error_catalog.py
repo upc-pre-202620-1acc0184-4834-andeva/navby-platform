@@ -37,6 +37,10 @@ ERROR_CATALOG: dict[str, ErrorDefinition] = {
     "CAPTCHA_INVALID": ErrorDefinition(
         "CAPTCHA_INVALID", 400, "Verificación de seguridad inválida"
     ),
+    "INVALID_CURRENT_PASSWORD": ErrorDefinition(
+        "INVALID_CURRENT_PASSWORD", 400, "Contraseña actual incorrecta"
+    ),
+    "PASSWORD_REQUIRED": ErrorDefinition("PASSWORD_REQUIRED", 409, "Contraseña requerida"),
     "INVALID_GOOGLE_TOKEN": ErrorDefinition(
         "INVALID_GOOGLE_TOKEN", 401, "Token de Google inválido"
     ),
