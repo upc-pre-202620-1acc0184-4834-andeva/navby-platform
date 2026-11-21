@@ -146,3 +146,15 @@ class DeleteAccountRequest(BaseModel):
     )
 
     confirmation: str
+
+
+class SetPasswordRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {"new_password": "NuevaPassword2026", "current_password": "Viajar2026"}
+        },
+    )
+
+    new_password: str
+    current_password: str | None = None

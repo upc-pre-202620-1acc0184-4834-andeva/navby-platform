@@ -670,3 +670,78 @@ async def test_ts08_ts09_ts10_ts11_forgot_reset_me_and_delete(
                 )
             ).scalar_one()
             assert ord_count == 1
+
+
+async def test_set_password_and_unlink_google(clean_iam_state: None) -> None:
+    app = create_app()
+    google_verifier = FakeGoogleVerifier(
+        {
+            "g-token": GoogleIdentity(
+                sub="gsub-account",
+                email="gonly@mail.com",
+                email_verified=True,
+                name="Google Only",
+            )
+        }
+    )
+    app.dependency_overrides[get_email_sender] = lambda: RecordingEmailSender()
+    app.dependency_overrides[get_google_verifier] = lambda: google_verifier
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        r_g = await client.post(
+            "/api/v1/auth/google", json={"id_token": "g-token", "accept_terms": True}
+        )
+        assert r_g.status_code == 200
+        headers = {"Authorization": f"Bearer {r_g.json()['access_token']}"}
+        old_refresh = r_g.cookies.get("navby_refresh")
+        assert old_refresh is not None
+
+        # Cuenta solo-Google: no puede desvincular sin contraseña.
+        r_me = await client.get("/api/v1/users/me", headers=headers)
+        assert (r_me.json()["has_password"], r_me.json()["has_google"]) == (False, True)
+        r_unlink_blocked = await client.delete("/api/v1/users/me/google", headers=headers)
+        assert r_unlink_blocked.status_code == 409
+        assert r_unlink_blocked.json()["code"] == "PASSWORD_REQUIRED"
+
+        # Crear la contraseña (sin la actual); una débil es 422.
+        r_weak = await client.put(
+            "/api/v1/users/me/password", json={"new_password": "corta"}, headers=headers
+        )
+        assert r_weak.status_code == 422
+        r_create = await client.put(
+            "/api/v1/users/me/password", json={"new_password": "Viajar2026"}, headers=headers
+        )
+        assert r_create.status_code == 204
+        # Crear la contraseña cierra las demás sesiones y deja una cookie nueva a este dispositivo.
+        new_refresh = r_create.cookies.get("navby_refresh")
+        assert new_refresh is not None and new_refresh != old_refresh
+        client.cookies.set("navby_refresh", old_refresh)
+        assert (await client.post("/api/v1/auth/refresh")).status_code == 401
+        client.cookies.set("navby_refresh", new_refresh)
+        assert (await client.post("/api/v1/auth/refresh")).status_code == 200
+
+        # Ya con contraseña: cambiarla exige la actual.
+        r_no_current = await client.put(
+            "/api/v1/users/me/password", json={"new_password": "Otra2026clave"}, headers=headers
+        )
+        assert r_no_current.status_code == 422
+        r_bad_current = await client.put(
+            "/api/v1/users/me/password",
+            json={"new_password": "Otra2026clave", "current_password": "Incorrecta1"},
+            headers=headers,
+        )
+        assert r_bad_current.status_code == 400
+        assert r_bad_current.json()["code"] == "INVALID_CURRENT_PASSWORD"
+
+        # Desvincular Google (idempotente) y entrar con la contraseña creada.
+        for _ in range(2):
+            r_unlink = await client.delete("/api/v1/users/me/google", headers=headers)
+            assert r_unlink.status_code == 204
+        r_me2 = await client.get("/api/v1/users/me", headers=headers)
+        assert (r_me2.json()["has_password"], r_me2.json()["has_google"]) == (True, False)
+        r_login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "gonly@mail.com", "password": "Viajar2026"},
+        )
+        assert r_login.status_code == 200

@@ -93,6 +93,16 @@ class RefreshSessionHandler:
                         )
                     )
 
+                if rt.replaced_by_hash is None:
+                    # Revocado a propósito (logout, cambio de contraseña): no es una reutilización
+                    # de un token rotado, así que no se tocan las demás sesiones del usuario.
+                    return Result.failure(
+                        ApplicationError(
+                            code="INVALID_REFRESH_TOKEN",
+                            message="Refresh token inválido o expirado.",
+                        )
+                    )
+
                 await self._refresh_repo.revoke_all_for_user(user.id.value, now)
                 await self._uow.commit()
                 return Result.failure(

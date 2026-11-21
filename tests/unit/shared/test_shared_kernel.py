@@ -78,7 +78,7 @@ def test_current_user_immutable() -> None:
     assert user.email_verified is True
 
 
-def test_error_catalog_has_all_28_codes() -> None:
+def test_error_catalog_has_all_30_codes() -> None:
     expected_codes = {
         "VALIDATION_ERROR",
         "RATE_LIMITED",
@@ -94,6 +94,8 @@ def test_error_catalog_has_all_28_codes() -> None:
         "INVALID_RESET_TOKEN",
         "INVALID_REFRESH_TOKEN",
         "INVALID_GOOGLE_TOKEN",
+        "INVALID_CURRENT_PASSWORD",
+        "PASSWORD_REQUIRED",
         "AIRPORT_NOT_FOUND",
         "ROUTE_NOT_REACHABLE",
         "SEARCH_IN_PROGRESS",
@@ -110,7 +112,7 @@ def test_error_catalog_has_all_28_codes() -> None:
         "CAPTCHA_INVALID",
     }
     assert set(ERROR_CATALOG.keys()) == expected_codes
-    assert len(ERROR_CATALOG) == 28
+    assert len(ERROR_CATALOG) == 30
 
 
 async def test_in_memory_event_bus_publishes_to_subscribers() -> None:
