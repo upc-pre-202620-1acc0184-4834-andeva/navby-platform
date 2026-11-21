@@ -125,6 +125,20 @@ class User(AggregateRoot):
             self.google_sub = google_sub
             self.updated_at = now
 
+    def unlink_google(self, now: datetime) -> None:
+        """Desvincula Google; sin contraseña la cuenta quedaría sin forma de entrar."""
+        if self.deleted_at is not None:
+            raise DomainError("UNAUTHENTICATED", "Account is deleted.")
+        if self.google_sub is None:
+            return
+        if self.password_hash is None:
+            raise DomainError(
+                "PASSWORD_REQUIRED",
+                "Crea una contraseña antes de desvincular Google.",
+            )
+        self.google_sub = None
+        self.updated_at = now
+
     def change_password(self, password_hash: PasswordHash, now: datetime) -> None:
         if self.deleted_at is not None:
             raise DomainError("INVALID_RESET_TOKEN", "Account is deleted.")

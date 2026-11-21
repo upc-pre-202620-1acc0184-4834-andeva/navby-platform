@@ -45,6 +45,14 @@ from src.modules.iam.application.commands.reset_password import (
     ResetPasswordCommand,
     ResetPasswordHandler,
 )
+from src.modules.iam.application.commands.set_password import (
+    SetPasswordCommand,
+    SetPasswordHandler,
+)
+from src.modules.iam.application.commands.unlink_google import (
+    UnlinkGoogleCommand,
+    UnlinkGoogleHandler,
+)
 from src.modules.iam.application.commands.verify_email import (
     VerifyEmailCommand,
     VerifyEmailHandler,
@@ -91,6 +99,7 @@ from src.modules.iam.interfaces.rest.schemas import (
     ResendVerificationRequest,
     ResetPasswordRequest,
     SessionResponse,
+    SetPasswordRequest,
     UserProfileResponse,
     VerifyEmailRequest,
 )
@@ -103,7 +112,7 @@ from src.shared.interfaces.auth import get_current_user
 from src.shared.interfaces.captcha import require_captcha
 from src.shared.interfaces.http_errors import raise_for_error
 from src.shared.interfaces.problem_details import ProblemDetails
-from src.shared.interfaces.rate_limit import client_ip_key, rate_limit
+from src.shared.interfaces.rate_limit import client_ip_key, rate_limit, user_id_key
 
 router = APIRouter(tags=["iam"])
 
@@ -591,3 +600,78 @@ async def delete_my_account(
     if result.is_failure:
         raise_for_error(result.error)
     _clear_refresh_cookie(response, settings)
+
+
+@router.put(
+    "/users/me/password",
+    summary="Crear o cambiar la contraseña propia",
+    description=(
+        "En una cuenta solo-Google **crea** la contraseña (no hace falta la actual). "
+        "Si la cuenta ya tiene contraseña, exige `current_password`. La nueva debe tener "
+        "de 8 a 72 caracteres con letras y números. No cierra las demás sesiones.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- **Rate limit:** 5 por minuto por usuario.\n"
+        "- **Errores:** `400 INVALID_CURRENT_PASSWORD`, `422 VALIDATION_ERROR`."
+    ),
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit("password", user_id_key, 5))],
+    responses={
+        400: {"model": ProblemDetails},
+        401: {"model": ProblemDetails},
+        422: {"model": ProblemDetails},
+        429: {"model": ProblemDetails},
+    },
+)
+async def set_my_password(
+    body: SetPasswordRequest,
+    response: Response,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(get_uow)],
+    password_hasher: Annotated[PasswordHasher, Depends(get_password_hasher)],
+    token_issuer: Annotated[TokenIssuer, Depends(get_token_issuer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    handler = SetPasswordHandler(
+        uow=uow,
+        user_repo=SqlAlchemyUserRepository(uow),
+        refresh_repo=SqlAlchemyRefreshTokenRepository(uow),
+        password_hasher=password_hasher,
+        token_issuer=token_issuer,
+    )
+    result = await handler.handle(
+        SetPasswordCommand(
+            user_id=current_user.user_id,
+            new_password=body.new_password,
+            current_password=body.current_password,
+        )
+    )
+    if result.is_failure:
+        raise_for_error(result.error)
+    _set_refresh_cookie(response, result.value, settings)
+
+
+@router.delete(
+    "/users/me/google",
+    summary="Desvincular la cuenta de Google",
+    description=(
+        "Quita el acceso con Google. Solo se permite si la cuenta tiene contraseña; si no, "
+        "queda sin forma de entrar y responde `409 PASSWORD_REQUIRED`. Es idempotente: sin "
+        "Google vinculado responde `204`. Entrar de nuevo con Google, con el mismo correo, "
+        "lo vuelve a vincular.\n\n"
+        "- 🔒 Requiere `Authorization: Bearer <access_token>`.\n"
+        "- **Error:** `409 PASSWORD_REQUIRED`."
+    ),
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {"model": ProblemDetails},
+        409: {"model": ProblemDetails},
+    },
+)
+async def unlink_my_google(
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(get_uow)],
+) -> None:
+    handler = UnlinkGoogleHandler(uow=uow, user_repo=SqlAlchemyUserRepository(uow))
+    result = await handler.handle(UnlinkGoogleCommand(user_id=current_user.user_id))
+    if result.is_failure:
+        raise_for_error(result.error)
