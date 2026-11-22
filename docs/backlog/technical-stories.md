@@ -343,7 +343,7 @@ Escenario: Rechazos sin cobro
   Cuando CUSTOM tiene pesos que no suman 1 → 422 INVALID_WEIGHTS
   Cuando las fechas no son ISO, la salida es anterior a hoy (Lima), el retorno es anterior a la salida o supera 330 días → 422 VALIDATION_ERROR
   Cuando los infantes superan a los adultos o el total de pasajeros supera 9 → 422 VALIDATION_ERROR
-  Cuando la cabina o la moneda no están en RN-03 → 422 VALIDATION_ERROR
+  Cuando la cabina no está en RN-03 → 422 VALIDATION_ERROR
   Cuando Redis no responde → 503 PROVIDER_UNAVAILABLE
   Y en ningún caso existe SEARCH_DEBIT
 

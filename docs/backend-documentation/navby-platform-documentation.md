@@ -193,6 +193,7 @@ La VM solo expone los puertos 80, 443 y 22. El crédito de Azure de $100 USD alc
 | `COOKIE_SECURE` | Atributo `Secure` de la cookie `navby_refresh`. | `false` | `true` |
 | `TRUST_PROXY_HEADERS` | Toma la IP del cliente de `X-Forwarded-For` (proxy de Vercel). | `false` | `true` |
 | `FLIGHT_API_MAX_CONCURRENCY` | Llamadas simultáneas del plan de FlightAPI (RN-16). | `5` | `5` |
+| `FX_FALLBACK_PEN_PER_USD` | Soles por dólar que se usan solo si el proveedor de tipo de cambio no responde (solo para mostrar precios). | `3.5` | `3.5` |
 | `TERMS_VERSION` | Versión vigente de los Términos y la Política de Privacidad (RL-01). | `2026-10` | `2026-10` |
 
 **Arranque seguro.** Con `APP_ENV=production` la API **no arranca** si:

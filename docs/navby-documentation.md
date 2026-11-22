@@ -26,7 +26,7 @@ Navby evalúa las tres dimensiones a la vez y entrega solo las tres opciones con
 
 | Término | Definición |
 | :--- | :--- |
-| **Búsqueda** | Consulta de un usuario: origen, destino, tipo de viaje, fechas, pasajeros, cabina y moneda. |
+| **Búsqueda** | Consulta de un usuario: origen, destino, tipo de viaje, fechas, pasajeros y cabina. |
 | **Par de aeropuertos** | Combinación concreta origen–destino (ej. `LIM`–`NRT`). Una ciudad con varios aeropuertos genera varios pares. |
 | **Oferta** | Itinerario real devuelto por FlightAPI: precio total, duración real, escalas, segmentos y *deep link*. |
 | **Frontera de Pareto** | Ofertas que no son superadas por ninguna otra en los tres criterios a la vez. |
@@ -138,7 +138,7 @@ Criterios por oferta: **precio total** (todos los pasajeros), **duración total*
 | :--- | :--- |
 | **RN-01** | Viajes soportados: solo ida (`ONE_WAY`) e ida y vuelta (`ROUND_TRIP`). En ida y vuelta el regreso sale del aeropuerto de llegada y vuelve al de salida (sin combinaciones cruzadas). |
 | **RN-02** | Pasajeros: 1–9 adultos, 0–8 niños (2–11 años), infantes (< 2 años) ≤ adultos. Total ≤ 9. |
-| **RN-03** | Cabinas: `ECONOMY`, `PREMIUM_ECONOMY`, `BUSINESS`, `FIRST`. Moneda de las tarifas mostradas: `USD` o `PEN`. |
+| **RN-03** | Cabinas: `ECONOMY`, `PREMIUM_ECONOMY`, `BUSINESS`, `FIRST`. Las tarifas se cotizan siempre en `USD` y la webapp las muestra en la moneda local según la región del navegador (Perú: soles `PEN`; cualquier otra: dólares `USD`) con el tipo de cambio diario de `GET /fx/rates`. |
 | **RN-04** | Fechas ISO `YYYY-MM-DD`. Salida ≥ hoy (hora de Lima). Retorno ≥ salida. Máximo 330 días a futuro. |
 | **RN-05** | Máximo **2 escalas** por tramo (ida o vuelta). Coincide con lo que devuelve FlightAPI y con el límite de BFS y A\*. |
 | **RN-06** | **Búsqueda por ciudad**: el usuario elige ciudades, no aeropuertos, y puede escribirlas en español o inglés (ver alias en la sección 8). Se usan todos los aeropuertos de la ciudad y el usuario puede, si quiere, desmarcar alguno. Una ciudad agrupa los aeropuertos con el mismo nombre de ciudad y país que estén a menos de 80 km entre sí. |
@@ -253,5 +253,5 @@ La validación académica mide **los tres algoritmos del producto**; no existen 
 | :--- | :--- | :--- |
 | **RL-01** | Consentimiento para tratar datos personales (Ley 29733). | El registro, local o con Google, exige aceptar los Términos y la Política de Privacidad. Se guardan la fecha y la versión aceptada. |
 | **RL-02** | Derecho a suprimir los datos personales (Ley 29733). | El usuario puede eliminar su cuenta. Se anonimizan nombre y correo, se borran sesiones e itinerarios, y se conservan las órdenes de compra por obligación tributaria. |
-| **RL-03** | Precios referenciales. | Toda tarifa se muestra con el aviso «Precio referencial obtenido de terceros; se confirma en el sitio del vendedor». |
+| **RL-03** | Precios referenciales. | Toda tarifa se muestra con el aviso «Precio referencial obtenido de terceros; se confirma en el sitio del vendedor». Si el precio se muestra convertido de USD, se indica el tipo de cambio y que el vendedor puede cobrar en otra moneda. |
 | **RL-04** | Comprobantes de pago (SUNAT). | **No aplica.** Mercado Pago opera siempre en modo sandbox, en local y en producción: las compras de paquetes se simulan con tarjetas de prueba y no se cobra dinero real, por lo que no se emiten boletas ni se integra un facturador. Si algún día se cobrara dinero real, integrar un facturador electrónico (Nubefact u otro) sería obligatorio antes de hacerlo. |

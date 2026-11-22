@@ -46,7 +46,7 @@ Invariantes: `pareto_front` no contiene ofertas dominadas, `podium` ⊆ `pareto_
 
 | Clase | Miembros | Validación |
 | :--- | :--- | :--- |
-| **SearchCriteria** | `trip_type`, `origins`, `destinations`, `departure_date`, `return_date`, `passengers`, `cabin`, `currency` | RN-01 a RN-04 y RN-06 (1–5 aeropuertos por lado, sin aeropuertos repetidos entre origen y destino). |
+| **SearchCriteria** | `trip_type`, `origins`, `destinations`, `departure_date`, `return_date`, `passengers`, `cabin`, `currency` (siempre `USD`: el proveedor se consulta en dólares y la webapp convierte al mostrar) | RN-01 a RN-04 y RN-06 (1–5 aeropuertos por lado, sin aeropuertos repetidos entre origen y destino). |
 | **PassengerMix** | `adults`, `children`, `infants` | RN-02. |
 | **AirportPair** | `origin`, `destination` | Distintos. *cache_key(criteria) -> str*. |
 | **PreferenceWeights** | `profile`, `price`, `duration`, `stops` | Cada peso en [0, 1] y suma = 1 ± 0.001. *from_profile(profile)* aplica la tabla de la sección 5.4. |
@@ -110,6 +110,10 @@ Entrada: `user_id`, `search_id` y **PreferenceWeights**. Carga la sesión, verif
 
 Devuelve el podio vigente. Error: `SEARCH_NOT_FOUND`.
 
+### **GetExchangeRates** (consulta)
+
+Devuelve los tipos de cambio por 1 USD (`USD` y `PEN`) para que la webapp muestre las tarifas en la moneda de la página. Lee **ExchangeRateCache**; si no hay valor llama a **ExchangeRateProvider** y lo guarda 6 horas; si el proveedor falla devuelve el valor de respaldo `FX_FALLBACK_PEN_PER_USD` con `source = fallback` (5 minutos en caché). No cobra créditos ni requiere sesión.
+
 ### Puertos
 
 | Puerto | Métodos | Adaptadores |
@@ -117,6 +121,8 @@ Devuelve el podio vigente. Error: `SEARCH_NOT_FOUND`.
 | **FlightOffersProvider** | *fetch_offers(pair, criteria) -> Result[list[FlightOffer]]* | `FlightApiOffersProvider`, `MockFlightOffersProvider` ([detalle](../flight-api-documentation.md)) |
 | **OfferCache** | *get(pair_key)*, *put(pair_key, offers)* | `RedisOfferCache` |
 | **SearchSessionStore** | *get(search_id)*, *create(search)*, *update(search)* (mantiene el TTL restante con `KEEPTTL`) | `RedisSearchSessionStore` |
+| **ExchangeRateProvider** | *fetch_usd_rates() -> Result[ExchangeRates]* | `OpenErApiExchangeRateProvider` (open.er-api.com) |
+| **ExchangeRateCache** | *get()*, *put(rates, ttl_seconds)* | `RedisExchangeRateCache` |
 | **SearchLock** | *acquire(user_id) -> bool*, *release(user_id)* | `RedisSearchLock` (`SET NX EX 60`) |
 | **ProviderGate** | *slot()* (context manager asíncrono, espera hasta 10 s) | `InMemoryProviderGate`: `asyncio.Semaphore(FLIGHT_API_MAX_CONCURRENCY)` (5 en LITE). Válido porque la plataforma corre con un solo worker de Uvicorn; si se agregan workers, el límite se divide entre ellos. |
 | **RoutingPort** | *select_pairs(...)*, *get_airports(...)* | Adaptador sobre **RoutingFacade** |
