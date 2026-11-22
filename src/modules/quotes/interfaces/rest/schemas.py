@@ -36,7 +36,6 @@ class SearchQuotesRequest(BaseModel):
                 "return_date": None,
                 "passengers": {"adults": 1, "children": 0, "infants": 0},
                 "cabin": "ECONOMY",
-                "currency": "USD",
                 "preferences": {"profile": "BALANCED"},
             }
         },
@@ -49,7 +48,8 @@ class SearchQuotesRequest(BaseModel):
     return_date: str | None = None
     passengers: PassengerMixInput
     cabin: str
-    currency: str
+    # Obsoleta e ignorada: se cotiza siempre en USD y la webapp convierte al mostrar.
+    currency: str | None = Field(default=None, deprecated=True)
     preferences: PreferencesInput | None = None
 
 
@@ -142,6 +142,25 @@ class PodiumOfferResponse(BaseModel):
     legs: list[LegResponse]
     airports: list[AirportGeoResponse]
     deep_link: str
+
+
+class ExchangeRatesResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "base": "USD",
+                "rates": {"USD": "1", "PEN": "3.441274"},
+                "as_of": "2026-11-22T00:02:32Z",
+                "source": "provider",
+            }
+        },
+    )
+
+    base: str
+    rates: dict[str, str]
+    as_of: str
+    source: str
 
 
 class PodiumResponse(BaseModel):

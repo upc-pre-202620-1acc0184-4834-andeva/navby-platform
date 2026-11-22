@@ -156,8 +156,9 @@ El reembolso (`SEARCH_REFUND`) inserta los mismos deltas con signo positivo. Los
 
 | Clave | Tipo | TTL | Contenido |
 | :--- | :--- | :---: | :--- |
-| `navby:quotes:offers:{pair_key}` | String (JSON) | 1,800 s | Ofertas normalizadas de un par. `pair_key` = `{trip}:{from}:{to}:{date}:{return\|-}:{cabin}:{adults}-{children}-{infants}:{currency}` |
+| `navby:quotes:offers:{pair_key}` | String (JSON) | 1,800 s | Ofertas normalizadas de un par. `pair_key` = `{trip}:{from}:{to}:{date}:{return\|-}:{cabin}:{adults}-{children}-{infants}:{currency}` (`currency` siempre `USD`) |
 | `navby:quotes:search:{search_id}` | String (JSON) | 1,800 s desde la creación | Sesión: `user_id`, criterios, frontera de Pareto, T_min y pesos actuales. Al reordenar se escribe con `KEEPTTL`. |
+| `navby:quotes:fx:usd` | String (JSON) | 21,600 s (300 s si es de respaldo) | Tipo de cambio por 1 USD para mostrar precios: `rates`, `as_of` y `source`. |
 | `navby:quotes:lock:{user_id}` | String | 60 s | Candado de cotización en curso (RN-15). |
 | `navby:iam:verify:{user_id}` | Hash | 600 s | `code_hash` (SHA-256 del OTP) e `attempts`. |
 | `navby:iam:verify_resend:{email_hash}` | String | 60 s | Impide reenviar el OTP más de una vez por minuto. |

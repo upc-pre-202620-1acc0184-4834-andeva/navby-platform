@@ -24,6 +24,7 @@
 | Quotes | `POST /quotes/search` | JWT verificado | Cotizar y obtener el podio (5 créditos, RN-08). |
 | Quotes | `POST /quotes/{search_id}/rank` | JWT verificado | Reordenar con otro perfil (gratis, RN-11). |
 | Quotes | `GET /quotes/{search_id}` | JWT verificado | Volver a leer el podio vigente. |
+| Quotes | `GET /fx/rates` | Sin sesión | Tipo de cambio para mostrar precios en la moneda local. |
 | Billing | `GET /billing/wallet` | JWT | Consultar el saldo. |
 | Billing | `GET /billing/transactions` | JWT | Ver el historial de movimientos de créditos. |
 | Billing | `GET /billing/packages` | JWT | Ver el catálogo de paquetes. |
@@ -183,12 +184,11 @@ Si ningún par tiene ruta: `200` con `"reachable": false`, `pairs: []` y `best_r
   "return_date": "2026-11-15",
   "passengers": { "adults": 2, "children": 1, "infants": 0 },
   "cabin": "ECONOMY",
-  "currency": "USD",
   "preferences": { "profile": "BALANCED" }
 }
 ```
 
-`origins` y `destinations` son los aeropuertos de cada ciudad elegida (1 a 5 por lado). El servidor elige qué pares cotizar (RN-14). `preferences` es opcional (por defecto `BALANCED`). Con `"profile": "CUSTOM"` se agregan `"weights": { "price": 0.4, "duration": 0.4, "stops": 0.2 }`.
+`origins` y `destinations` son los aeropuertos de cada ciudad elegida (1 a 5 por lado). La búsqueda **no lleva moneda**: FlightAPI se consulta siempre en `USD` (no devuelve ofertas en `PEN` para todas las rutas y así la caché se comparte entre usuarios) y la webapp convierte al mostrar con `GET /fx/rates`. `currency` quedó obsoleto: se acepta y se ignora. El servidor elige qué pares cotizar (RN-14). `preferences` es opcional (por defecto `BALANCED`). Con `"profile": "CUSTOM"` se agregan `"weights": { "price": 0.4, "duration": 0.4, "stops": 0.2 }`.
 
 `200` → **PodiumResponse**:
 
@@ -256,6 +256,16 @@ Errores:
 ### `GET /quotes/{search_id}`
 
 `200 PodiumResponse` con los pesos usados por última vez. Error: `404 SEARCH_NOT_FOUND`.
+
+### `GET /fx/rates`
+
+Público (sin sesión). Unidades de cada moneda por 1 USD para mostrar las tarifas en la moneda de la página; las cotizaciones siempre llegan en `USD`.
+
+```json
+{ "base": "USD", "rates": { "USD": "1", "PEN": "3.441274" }, "as_of": "2026-11-22T00:02:32Z", "source": "provider" }
+```
+
+`source` es `provider` (open.er-api.com, actualiza una vez al día; exige atribución) o `fallback` (valor de `FX_FALLBACK_PEN_PER_USD` si el proveedor no responde). Se guarda 6 horas en Redis (5 minutos si es de respaldo) y la respuesta lleva `Cache-Control: public, max-age=3600`. Rate limit: 60 por minuto por IP.
 
 ## 5. Billing
 

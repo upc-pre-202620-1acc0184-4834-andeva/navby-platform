@@ -21,7 +21,7 @@
 | `PREMIUM_ECONOMY` | `Premium_Economy` |
 | `BUSINESS` | `Business` |
 | `FIRST` | `First` |
-| `USD`, `PEN` | `USD`, `PEN` |
+| `USD` | `USD` (Navby siempre cotiza en dólares y la webapp convierte al mostrar; ver `GET /fx/rates`) |
 
 ## 2. Respuesta (campos usados)
 

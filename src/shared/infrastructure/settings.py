@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     flight_api_key: str = ""
     flight_api_max_concurrency: int = 5
+    # Soles por dólar que se usan solo si el proveedor de tipo de cambio no responde.
+    fx_fallback_pen_per_usd: float = 3.5
 
     mercadopago_access_token: str = ""
     mercadopago_webhook_secret: str = ""

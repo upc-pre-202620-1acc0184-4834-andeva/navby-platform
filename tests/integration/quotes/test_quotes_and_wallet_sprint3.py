@@ -137,7 +137,7 @@ async def test_ts14_ts15_ts16_quotes_search_cache_rerank_and_get(
                 "return_date": ret_date,
                 "passengers": {"adults": 1, "children": 0, "infants": 0},
                 "cabin": "ECONOMY",
-                "currency": "USD",
+                "currency": "PEN",  # obsoleta: se ignora y siempre se cotiza en USD
                 "preferences": {"profile": "BALANCED"},
             },
         )
@@ -149,6 +149,7 @@ async def test_ts14_ts15_ts16_quotes_search_cache_rerank_and_get(
         assert body["credits_remaining"] == 5
         assert body["partial"] is False
         assert 1 <= len(body["podium"]) <= 3
+        assert {offer["price"]["currency"] for offer in body["podium"]} == {"USD"}
         assert "price_disclaimer" in body
         assert len(provider.calls) == 1
 

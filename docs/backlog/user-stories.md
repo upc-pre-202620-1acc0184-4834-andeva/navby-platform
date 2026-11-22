@@ -492,16 +492,23 @@ Escenario: Búsqueda de otra persona
 
 ### US-34 · Indicar los datos de mi viaje
 
-**Como** viajero **quiero** indicar el tipo de viaje, las fechas, los pasajeros, la cabina y la moneda **para** recibir recomendaciones que correspondan a mi viaje real.
+**Como** viajero **quiero** indicar el tipo de viaje, las fechas, los pasajeros y la cabina **para** recibir recomendaciones que correspondan a mi viaje real.
 
 Reglas: RN-01 a RN-04 · Técnica: TS-14
 
 ```gherkin
 Escenario: Viaje familiar en ejecutiva
-  Dado que el viajero busca ida y vuelta para 2 adultos, 1 niño y 1 infante en cabina ejecutiva con precios en soles
+  Dado que el viajero busca ida y vuelta para 2 adultos, 1 niño y 1 infante en cabina ejecutiva
   Cuando recibe las recomendaciones
   Entonces todas corresponden a esa cabina
-  Y el precio total incluye a los 4 pasajeros y está en soles
+  Y el precio total incluye a los 4 pasajeros
+
+Escenario: Precios en la moneda local
+  Dado que el navegador del viajero tiene región Perú
+  Cuando recibe las recomendaciones
+  Entonces los precios se muestran en soles, convertidos desde USD
+  Y se indica el tipo de cambio y que el vendedor puede cobrar en otra moneda
+  Y con cualquier otra región los precios se muestran en dólares, sin conversión
 
 Escenario: Más infantes que adultos
   Cuando el viajero indica 1 adulto y 2 infantes

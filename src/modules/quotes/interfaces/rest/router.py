@@ -1,8 +1,15 @@
+from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from src.modules.billing.interfaces.acl.facade.billing_facade import BillingFacade
+from src.modules.quotes.application.acl.ports.exchange_rate_cache import (
+    ExchangeRateCache,
+)
+from src.modules.quotes.application.acl.ports.exchange_rate_provider import (
+    ExchangeRateProvider,
+)
 from src.modules.quotes.application.acl.ports.flight_offers_provider import (
     FlightOffersProvider,
 )
@@ -20,6 +27,9 @@ from src.modules.quotes.application.commands.search_quotes import (
     SearchQuotesCommand,
     SearchQuotesHandler,
 )
+from src.modules.quotes.application.queries.get_exchange_rates import (
+    GetExchangeRatesHandler,
+)
 from src.modules.quotes.application.queries.get_quote_search import (
     GetQuoteSearchHandler,
     GetQuoteSearchQuery,
@@ -33,13 +43,23 @@ from src.modules.quotes.infrastructure.adapters.in_memory_provider_gate import (
 from src.modules.quotes.infrastructure.adapters.mock_flight_offers_provider import (
     MockFlightOffersProvider,
 )
+from src.modules.quotes.infrastructure.adapters.open_er_api_exchange_rate_provider import (
+    OpenErApiExchangeRateProvider,
+)
+from src.modules.quotes.infrastructure.cache.redis_exchange_rate_cache import (
+    RedisExchangeRateCache,
+)
 from src.modules.quotes.infrastructure.cache.redis_offer_cache import RedisOfferCache
 from src.modules.quotes.infrastructure.cache.redis_search_lock import RedisSearchLock
 from src.modules.quotes.infrastructure.cache.redis_search_session_store import (
     RedisSearchSessionStore,
 )
-from src.modules.quotes.interfaces.rest.assemblers import to_podium_response
+from src.modules.quotes.interfaces.rest.assemblers import (
+    to_exchange_rates_response,
+    to_podium_response,
+)
 from src.modules.quotes.interfaces.rest.schemas import (
+    ExchangeRatesResponse,
     PodiumResponse,
     RerankQuotesRequest,
     SearchQuotesRequest,
@@ -56,7 +76,7 @@ from src.shared.infrastructure.settings import Settings, get_settings
 from src.shared.interfaces.auth import get_verified_user
 from src.shared.interfaces.http_errors import raise_for_error
 from src.shared.interfaces.problem_details import ProblemDetails
-from src.shared.interfaces.rate_limit import rate_limit, user_id_key
+from src.shared.interfaces.rate_limit import client_ip_key, rate_limit, user_id_key
 
 router = APIRouter(tags=["quotes"])
 
@@ -91,6 +111,14 @@ def get_session_store() -> SearchSessionStore:
 
 def get_search_lock() -> SearchLock:
     return RedisSearchLock(get_redis_client())
+
+
+def get_exchange_rate_provider() -> ExchangeRateProvider:
+    return OpenErApiExchangeRateProvider()
+
+
+def get_exchange_rate_cache() -> ExchangeRateCache:
+    return RedisExchangeRateCache(get_redis_client())
 
 
 def get_routing_facade(
@@ -178,7 +206,6 @@ async def search_quotes(
             children=body.passengers.children,
             infants=body.passengers.infants,
             cabin=body.cabin,
-            currency=body.currency,
             profile=profile_str,
             price_weight=w_in.price if w_in is not None else None,
             duration_weight=w_in.duration if w_in is not None else None,
@@ -231,6 +258,37 @@ async def rerank_quotes(
     if res.is_failure:
         raise_for_error(res.error)
     return to_podium_response(res.value, routing_facade)
+
+
+@router.get(
+    "/fx/rates",
+    summary="Tipo de cambio para mostrar precios en la moneda local",
+    description=(
+        "Unidades de `USD` y `PEN` por 1 USD. Las cotizaciones siempre llegan en `USD`; la "
+        "webapp convierte al mostrar. El valor se guarda 6 horas en Redis; si el proveedor "
+        "(open.er-api.com) no responde se devuelve un valor de respaldo con "
+        '`source: "fallback"`.\n\n'
+        "- Público, sin autenticación. **Rate limit:** 60 por minuto por IP.\n"
+        "- Respuesta con `Cache-Control: public, max-age=3600`."
+    ),
+    response_model=ExchangeRatesResponse,
+    dependencies=[Depends(rate_limit("fx_rates", client_ip_key, 60))],
+    responses={429: {"model": ProblemDetails}},
+)
+async def get_exchange_rates(
+    response: Response,
+    settings: Annotated[Settings, Depends(get_settings)],
+    provider: Annotated[ExchangeRateProvider, Depends(get_exchange_rate_provider)],
+    cache: Annotated[ExchangeRateCache, Depends(get_exchange_rate_cache)],
+) -> ExchangeRatesResponse:
+    handler = GetExchangeRatesHandler(
+        provider=provider,
+        cache=cache,
+        fallback_pen_per_usd=Decimal(str(settings.fx_fallback_pen_per_usd)),
+    )
+    rates = await handler.handle()
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return to_exchange_rates_response(rates)
 
 
 @router.get(
