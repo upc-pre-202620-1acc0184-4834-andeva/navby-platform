@@ -35,6 +35,9 @@ from src.shared.application.result import Result
 from src.shared.domain.domain_error import DomainError
 
 LIMA_TZ = ZoneInfo("America/Lima")
+# Siempre se cotiza en USD: FlightAPI no devuelve ofertas en PEN para todas las rutas y así la
+# caché de 30 min se comparte entre usuarios. La webapp convierte al mostrar (GET /fx/rates).
+PROVIDER_CURRENCY = Currency.USD
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +52,6 @@ class SearchQuotesCommand:
     children: int
     infants: int
     cabin: str
-    currency: str
     profile: str = "BALANCED"
     price_weight: float | None = None
     duration_weight: float | None = None
@@ -80,7 +82,6 @@ class SearchQuotesHandler:
         try:
             trip_enum = TripType(cmd.trip_type)
             cabin_enum = Cabin(cmd.cabin)
-            currency_enum = Currency(cmd.currency)
             dep_date = date.fromisoformat(cmd.departure_date)
             ret_date = date.fromisoformat(cmd.return_date) if cmd.return_date is not None else None
             pax = PassengerMix(
@@ -96,7 +97,7 @@ class SearchQuotesHandler:
                 return_date=ret_date,
                 passengers=pax,
                 cabin=cabin_enum,
-                currency=currency_enum,
+                currency=PROVIDER_CURRENCY,
                 today_lima=today_lima,
             )
         except ValueError:

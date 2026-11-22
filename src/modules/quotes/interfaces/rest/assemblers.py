@@ -1,8 +1,10 @@
 from src.modules.quotes.domain.model.aggregates.quote_search import QuoteSearch
+from src.modules.quotes.domain.model.value_objects.exchange_rates import ExchangeRates
 from src.modules.quotes.domain.model.value_objects.flight_offer import RankedOffer
 from src.modules.quotes.interfaces.rest.schemas import (
     AirlineResponse,
     AirportGeoResponse,
+    ExchangeRatesResponse,
     LegResponse,
     MoneyResponse,
     PairQuotedResponse,
@@ -80,6 +82,15 @@ def to_podium_offer_response(
         legs=legs_resp,
         airports=airports_resp,
         deep_link=offer.deep_link,
+    )
+
+
+def to_exchange_rates_response(rates: ExchangeRates) -> ExchangeRatesResponse:
+    return ExchangeRatesResponse(
+        base="USD",
+        rates={code: format(value, "f") for code, value in rates.rates.items()},
+        as_of=rates.as_of.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        source=rates.source,
     )
 
 
